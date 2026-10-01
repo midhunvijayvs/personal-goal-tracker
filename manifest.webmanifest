@@ -2,7 +2,7 @@
   "name": "Trajectory — Goal Tracker",
   "short_name": "Trajectory",
   "description": "Personal goal and task tracker with deadlines, priorities, and progress tracking.",
-  "start_url": "./goal-tracker.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

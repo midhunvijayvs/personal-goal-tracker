@@ -4,7 +4,7 @@
 
 var CACHE_NAME = "trajectory-shell-v1";
 var SHELL_FILES = [
-  "./goal-tracker.html",
+  "./index.html",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png"
