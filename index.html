@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Trajectory — Goal Tracker</title>
+<title>Personal Assistant</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#11161D">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Trajectory">
+<meta name="apple-mobile-web-app-title" content="Personal Assistant">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -213,7 +213,7 @@
 
   .goal-head{
     display:flex;
-    align-items:center;
+    align-items:flex-start;
     gap:12px;
     padding:16px 18px;
     cursor:pointer;
@@ -223,6 +223,8 @@
     font-size:11px;
     transition:transform .15s ease;
     width:10px;
+    margin-top:5px;
+    flex-shrink:0;
   }
   .goal.open .chev{transform:rotate(90deg);}
   .goal-title-wrap{flex:1;min-width:0;}
@@ -236,13 +238,22 @@
     text-overflow:ellipsis;
   }
   .goal-title.done{color:var(--text-faint);text-decoration:line-through;}
+  .goal-head-controls{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-top:8px;
+    flex-wrap:wrap;
+  }
   .goal-meta{
     display:flex;
     gap:10px;
     align-items:center;
-    margin-top:5px;
     font-size:12px;
     color:var(--text-dim);
+    flex:1;
+    min-width:0;
+    flex-wrap:wrap;
   }
   .progress-wrap{
     width:110px;
@@ -309,7 +320,50 @@
     text-align:center;
     flex-shrink:0;
   }
-  .sub-actions{flex-shrink:0;}
+  .sub-actions{flex-shrink:0;display:flex;gap:2px;}
+
+  .drag-handle{
+    cursor:grab;
+    color:var(--text-faint);
+    font-size:13px;
+    letter-spacing:1px;
+    padding:2px 5px;
+    flex-shrink:0;
+    touch-action:none;
+    user-select:none;
+  }
+  .drag-handle:active{cursor:grabbing;}
+  .subtask.dragging{opacity:0.45;}
+
+  .month-group-title{
+    font-family:'Fraunces',serif;
+    font-style:italic;
+    font-size:14.5px;
+    color:var(--text-dim);
+    margin:22px 0 10px;
+    padding-bottom:6px;
+    border-bottom:1px solid var(--border);
+  }
+  .month-group-title:first-child{margin-top:0;}
+
+  .gear-btn{
+    position:fixed;
+    top:calc(env(safe-area-inset-top, 0px) + 14px);
+    right:16px;
+    background:transparent;
+    border:none;
+    color:var(--text-dim);
+    font-size:21px;
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:40;
+    cursor:pointer;
+  }
+  .gear-btn:hover{color:var(--text);background:var(--panel-hover);}
 
   .add-sub-row, .add-goal-row{
     margin-top:12px;
@@ -443,10 +497,13 @@
     text-align:center;
   }
 
+  .top-actions{padding-right:46px;}
+
   @media (max-width:640px){
     .dashboard{grid-template-columns:repeat(2,1fr);}
     .progress-wrap{width:72px;}
     .field-row{flex-direction:column;gap:0;}
+    .goal-meta{flex-direction:column;align-items:flex-start;gap:4px;}
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -456,15 +513,16 @@
 </head>
 <body>
 
-<div class="app">
+<button id="settingsBtn" class="gear-btn" title="Settings" aria-label="Settings">⚙</button>
+
+<div class="app" id="mainApp">
   <header class="top">
     <div>
-      <h1>Trajectory</h1>
+      <h1 id="appHeading">Personal Assistant</h1>
       <div class="tagline">Your goals, broken down and on track.</div>
     </div>
     <div class="top-actions">
       <span id="syncStatus" class="pill ok" style="cursor:pointer;" title="Click to open sync settings">Not connected</span>
-      <button class="btn btn-ghost btn-sm" id="settingsBtn">Settings</button>
       <button class="btn btn-primary" id="newGoalBtn">+ New goal</button>
     </div>
   </header>
@@ -478,15 +536,49 @@
 
   <div class="controls">
     <div style="font-size:13px;color:var(--text-dim);" id="goalCount"></div>
-    <select class="sort-select" id="sortSelect">
-      <option value="deadline">Sort by deadline</option>
-      <option value="priority">Sort by priority</option>
-      <option value="progress">Sort by progress</option>
-      <option value="created">Sort by date added</option>
-    </select>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" id="monthlyReportBtn">📊 Monthly report</button>
+      <select class="sort-select" id="sortSelect">
+        <option value="deadline">Sort by deadline</option>
+        <option value="priority">Sort by priority</option>
+        <option value="progress">Sort by progress</option>
+        <option value="created">Sort by date added</option>
+      </select>
+    </div>
   </div>
 
   <div id="goalList"></div>
+</div>
+
+<!-- Monthly Report Page -->
+<div class="app" id="reportPage" style="display:none;">
+  <header class="top">
+    <div>
+      <h1 style="font-size:24px;">Monthly report</h1>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-ghost btn-sm" id="reportBackBtn">← Back</button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <button class="btn-icon" id="reportPrevMonth" title="Previous month">◀</button>
+    <div id="reportMonthLabel" style="font-family:'Fraunces',serif;font-size:16px;flex:1;text-align:center;"></div>
+    <button class="btn-icon" id="reportNextMonth" title="Next month">▶</button>
+  </div>
+
+  <div class="dashboard" id="reportSummary"></div>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <div class="upcoming" style="flex:1;min-width:240px;text-align:center;">
+      <h3 style="text-align:left;">Goals due this month</h3>
+      <div id="reportGoalsChart"></div>
+    </div>
+    <div class="upcoming" style="flex:1;min-width:240px;text-align:center;">
+      <h3 style="text-align:left;">Subtasks due this month</h3>
+      <div id="reportSubtasksChart"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Goal Modal -->
@@ -530,19 +622,9 @@
       <label>Subtask title</label>
       <input type="text" id="subTitleInput" placeholder="e.g. Finish Engineering Maths revision">
     </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Priority</label>
-        <select id="subPriorityInput">
-          <option value="high">High</option>
-          <option value="medium" selected>Medium</option>
-          <option value="low">Low</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Deadline</label>
-        <input type="date" id="subDeadlineInput">
-      </div>
+    <div class="field">
+      <label>Deadline</label>
+      <input type="date" id="subDeadlineInput">
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="subCancelBtn">Cancel</button>
@@ -555,6 +637,10 @@
 <div class="overlay" id="settingsOverlay">
   <div class="modal">
     <h2>Settings</h2>
+    <div class="settings-row">
+      <span>Your name</span>
+      <input type="text" id="userNameInput" class="num-input" style="width:140px;text-align:left;" placeholder="e.g. Midhun">
+    </div>
     <div class="settings-row">
       <span id="driveStatusLabel">Google Drive: not connected</span>
       <button class="btn btn-sm btn-primary" id="driveConnectBtn">Connect</button>
@@ -577,6 +663,10 @@
       <button class="btn btn-sm btn-ghost" id="testSoundBtn">Play sound</button>
     </div>
     <div class="settings-row">
+      <span id="notifPermLabel">Phone/browser notifications: not enabled</span>
+      <button class="btn btn-sm btn-ghost" id="enableNotifBtn">Enable</button>
+    </div>
+    <div class="settings-row">
       <span style="color:var(--red);">Clear all data</span>
       <button class="btn btn-sm btn-ghost" id="clearDataBtn" style="border-color:var(--red);color:var(--red);">Clear</button>
     </div>
@@ -590,7 +680,8 @@
 (function(){
   "use strict";
 
-  var STORAGE_KEY = "trajectory_data_v1";
+  var STORAGE_KEY = "personal_assistant_data_v1";
+  var LEGACY_STORAGE_KEY = "trajectory_data_v1"; // pre-rename key, kept for one-time migration
   var state = loadState();
   var openGoalId = null; // which goal card is expanded
   var editingGoalId = null; // null = creating new
@@ -600,11 +691,22 @@
   function loadState(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
-      if(raw) return JSON.parse(raw);
+      if(!raw){
+        var legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+        if(legacy){ raw = legacy; localStorage.setItem(STORAGE_KEY, legacy); }
+      }
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(!parsed.settings) parsed.settings = {};
+        if(typeof parsed.settings.userName !== "string") parsed.settings.userName = "";
+        if(typeof parsed.settings.soundEnabled !== "boolean") parsed.settings.soundEnabled = true;
+        if(typeof parsed.settings.warnHours !== "number") parsed.settings.warnHours = 48;
+        return parsed;
+      }
     }catch(e){ console.error("Could not load saved data", e); }
     return {
       goals: [],
-      settings: { soundEnabled: true, warnHours: 48 }
+      settings: { soundEnabled: true, warnHours: 48, userName: "" }
     };
   }
 
@@ -620,8 +722,10 @@
   // and safe to embed here — it's not a secret.
   var DRIVE_CLIENT_ID = "196324205483-t6ulmlbh78gau4q0dg637t9bt8k8upjs.apps.googleusercontent.com";
   var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
-  var DRIVE_FILE_NAME = "trajectory-data.json";
-  var DRIVE_CONNECTED_KEY = "trajectory_drive_connected";
+  var DRIVE_FILE_NAME = "personal-assistant-data.json";
+  var DRIVE_LEGACY_FILE_NAME = "trajectory-data.json"; // pre-rename filename, kept for one-time migration
+  var DRIVE_CONNECTED_KEY = "personal_assistant_drive_connected";
+  var DRIVE_LEGACY_CONNECTED_KEY = "trajectory_drive_connected";
 
   var driveTokenClient = null;
   var driveAccessToken = null;
@@ -681,6 +785,10 @@
     });
 
     // If we connected before, try to reconnect quietly (no popup) on load.
+    // (Also checks the pre-rename flag so an already-connected user isn't asked to reconnect.)
+    if(localStorage.getItem(DRIVE_CONNECTED_KEY) !== "true" && localStorage.getItem(DRIVE_LEGACY_CONNECTED_KEY) === "true"){
+      localStorage.setItem(DRIVE_CONNECTED_KEY, "true");
+    }
     if(localStorage.getItem(DRIVE_CONNECTED_KEY) === "true"){
       driveTokenClient.requestAccessToken({ prompt: "" });
     }
@@ -716,10 +824,11 @@
 
   function findDriveFile(callback){
     var url = "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&q=" +
-      encodeURIComponent("name='" + DRIVE_FILE_NAME + "'");
+      encodeURIComponent("name='" + DRIVE_FILE_NAME + "' or name='" + DRIVE_LEGACY_FILE_NAME + "'");
     driveApiFetch(url).then(function(r){ return r.json(); }).then(function(data){
       if(data.files && data.files.length > 0){
-        driveFileId = data.files[0].id;
+        var exact = data.files.filter(function(f){ return f.name === DRIVE_FILE_NAME; })[0];
+        driveFileId = (exact || data.files[0]).id;
       }
       callback();
     }).catch(function(e){ console.error("Drive lookup failed", e); callback(); });
@@ -826,38 +935,81 @@
   function playAlertSound(){
     try{
       if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(audioCtx.state === "suspended") audioCtx.resume();
       var now = audioCtx.currentTime;
-      [0, 0.18].forEach(function(offset){
+      var freqs = [880, 622];     // alternating high/low siren tones
+      var stepDur = 0.3;
+      var steps = 8;              // ~2.4 seconds total — long and hard to miss
+      for(var i=0;i<steps;i++){
+        var t = now + i*stepDur;
         var osc = audioCtx.createOscillator();
         var gain = audioCtx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(880, now+offset);
-        gain.gain.setValueAtTime(0.0001, now+offset);
-        gain.gain.exponentialRampToValueAtTime(0.18, now+offset+0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now+offset+0.16);
+        osc.type = "square";
+        osc.frequency.setValueAtTime(freqs[i%2], t);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.4, t+0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t+stepDur-0.02);
         osc.connect(gain).connect(audioCtx.destination);
-        osc.start(now+offset);
-        osc.stop(now+offset+0.17);
-      });
+        osc.start(t);
+        osc.stop(t+stepDur);
+      }
     }catch(e){ console.error("Sound playback failed", e); }
   }
 
+  // ---------- System / phone notifications ----------
+  function updateNotifPermUI(){
+    var label = document.getElementById("notifPermLabel");
+    var btn = document.getElementById("enableNotifBtn");
+    if(!("Notification" in window)){
+      label.textContent = "Phone/browser notifications: not supported here";
+      btn.style.display = "none";
+      return;
+    }
+    if(Notification.permission === "granted"){
+      label.textContent = "Phone/browser notifications: enabled";
+      btn.style.display = "none";
+    } else if(Notification.permission === "denied"){
+      label.textContent = "Phone/browser notifications: blocked (check browser site settings)";
+      btn.style.display = "none";
+    } else {
+      label.textContent = "Phone/browser notifications: not enabled";
+      btn.style.display = "";
+    }
+  }
+
+  function sendDeadlineNotification(title, body){
+    if(!("Notification" in window) || Notification.permission !== "granted") return;
+    if(navigator.serviceWorker && navigator.serviceWorker.ready){
+      navigator.serviceWorker.ready.then(function(reg){
+        reg.showNotification(title, {
+          body: body, icon: "icon-192.png", badge: "icon-192.png",
+          tag: "deadline-" + title + "-" + body, requireInteraction: true
+        });
+      }).catch(function(){
+        try{ new Notification(title, { body: body, icon: "icon-192.png" }); }catch(e){}
+      });
+    } else {
+      try{ new Notification(title, { body: body, icon: "icon-192.png" }); }catch(e){}
+    }
+  }
+
   function checkForNewUrgentAlerts(){
-    if(!state.settings.soundEnabled) return;
     var shouldBeep = false;
     state.goals.forEach(function(g){
       if(g.done) return;
       if(urgencyOf(g.deadline) === "urgent" && !alertedIds[g.id]){
         alertedIds[g.id] = true; shouldBeep = true;
+        sendDeadlineNotification("Deadline approaching", g.title + " is due soon.");
       }
       (g.subtasks||[]).forEach(function(s){
         if(s.done) return;
         if(urgencyOf(s.deadline) === "urgent" && !alertedIds[s.id]){
           alertedIds[s.id] = true; shouldBeep = true;
+          sendDeadlineNotification("Deadline approaching", s.title + " (in \"" + g.title + "\") is due soon.");
         }
       });
     });
-    if(shouldBeep) playAlertSound();
+    if(shouldBeep && state.settings.soundEnabled) playAlertSound();
   }
 
   // ---------- Progress calculation ----------
@@ -878,7 +1030,18 @@
   }
 
   // ---------- Rendering ----------
+  function renderHeading(){
+    var h1 = document.getElementById("appHeading");
+    var name = (state.settings.userName || "").trim();
+    if(name){
+      h1.innerHTML = escapeHtml(name) + "&rsquo;s<br>Personal Assistant";
+    } else {
+      h1.textContent = "Personal Assistant";
+    }
+  }
+
   function render(){
+    renderHeading();
     renderDashboard();
     renderUpcoming();
     renderGoalList();
@@ -967,6 +1130,12 @@
     return list;
   }
 
+  function monthGroupLabel(dateStr){
+    if(!dateStr) return "No deadline set";
+    var d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString(undefined, {month:"long", year:"numeric"});
+  }
+
   function renderGoalList(){
     var el = document.getElementById("goalList");
     var countEl = document.getElementById("goalCount");
@@ -978,7 +1147,24 @@
       return;
     }
 
-    el.innerHTML = sortedGoals().map(renderGoalCard).join("");
+    var sortBy = document.getElementById("sortSelect").value;
+    var sorted = sortedGoals();
+
+    if(sortBy === "deadline"){
+      var order = [];
+      var groups = {};
+      sorted.forEach(function(g){
+        var key = monthGroupLabel(g.deadline);
+        if(!groups[key]){ groups[key] = []; order.push(key); }
+        groups[key].push(g);
+      });
+      el.innerHTML = order.map(function(key){
+        return '<div class="month-group-title">' + escapeHtml(key) + '</div>' +
+          groups[key].map(renderGoalCard).join("");
+      }).join("");
+    } else {
+      el.innerHTML = sorted.map(renderGoalCard).join("");
+    }
     attachGoalListeners();
   }
 
@@ -1014,19 +1200,21 @@
         '<span class="chev">▶</span>' +
         '<div class="goal-title-wrap">' +
           '<p class="goal-title '+(done?"done":"")+'">'+escapeHtml(g.title)+'</p>' +
-          '<div class="goal-meta">' +
-            '<span style="text-transform:capitalize;">'+g.priority+' priority</span>' +
-            (subCount > 0 ? '<span>· '+subDoneCount+'/'+subCount+' subtasks</span>' : '') +
-            (pillHtml ? '<span>· </span>'+pillHtml : (done ? '<span class="pill ok">Done</span>' : '')) +
+          '<div class="goal-head-controls">' +
+            '<div class="goal-meta">' +
+              '<span style="text-transform:capitalize;">'+g.priority+' priority</span>' +
+              (subCount > 0 ? '<span>'+subDoneCount+'/'+subCount+' subtasks</span>' : '') +
+              (pillHtml ? pillHtml : (done ? '<span class="pill ok">Done</span>' : '')) +
+            '</div>' +
+            '<div class="progress-wrap">' +
+              '<div class="progress-track"><div class="progress-fill" style="width:'+pct+'%;"></div></div>' +
+              '<div class="progress-pct">'+pct+'%</div>' +
+            '</div>' +
+            '<div class="goal-actions">' +
+              '<button class="btn-icon" data-action="edit-goal" data-goal="'+g.id+'" title="Edit">✎</button>' +
+              '<button class="btn-icon" data-action="delete-goal" data-goal="'+g.id+'" title="Delete">🗑</button>' +
+            '</div>' +
           '</div>' +
-        '</div>' +
-        '<div class="progress-wrap">' +
-          '<div class="progress-track"><div class="progress-fill" style="width:'+pct+'%;"></div></div>' +
-          '<div class="progress-pct">'+pct+'%</div>' +
-        '</div>' +
-        '<div class="goal-actions">' +
-          '<button class="btn-icon" data-action="edit-goal" data-goal="'+g.id+'" title="Edit">✎</button>' +
-          '<button class="btn-icon" data-action="delete-goal" data-goal="'+g.id+'" title="Delete">🗑</button>' +
         '</div>' +
       '</div>' +
       '<div class="goal-body">' +
@@ -1042,11 +1230,15 @@
     var u = urgencyOf(s.deadline);
     var pillCls = u === "overdue" ? "overdue" : (u === "urgent" ? "urgent" : "ok");
     return '<div class="subtask" data-sub-id="'+s.id+'">' +
+      '<span class="drag-handle" data-action="drag-handle" title="Drag to reorder">⋮⋮</span>' +
       '<div class="check '+(s.done?"checked":"")+'" data-action="toggle-sub-done" data-goal="'+g.id+'" data-sub="'+s.id+'">'+(s.done?"✓":"")+'</div>' +
       '<span class="sub-title '+(s.done?"done":"")+'">'+escapeHtml(s.title)+'</span>' +
       (s.deadline && !s.done ? '<span class="pill '+pillCls+'">'+formatDeadline(s.deadline)+'</span>' : '') +
       '<input type="number" class="sub-pct" min="0" max="100" value="'+(s.done?100:(s.manualPct||0))+'" '+(s.done?"disabled":"")+' data-action="sub-pct" data-goal="'+g.id+'" data-sub="'+s.id+'" title="Completion %">' +
-      '<div class="sub-actions"><button class="btn-icon" data-action="delete-sub" data-goal="'+g.id+'" data-sub="'+s.id+'" title="Delete">🗑</button></div>' +
+      '<div class="sub-actions">' +
+        '<button class="btn-icon" data-action="edit-sub" data-goal="'+g.id+'" data-sub="'+s.id+'" title="Edit">✎</button>' +
+        '<button class="btn-icon" data-action="delete-sub" data-goal="'+g.id+'" data-sub="'+s.id+'" title="Delete">🗑</button>' +
+      '</div>' +
     '</div>';
   }
 
@@ -1081,6 +1273,7 @@
         e.stopPropagation();
         var g = findGoal(goalId);
         g.done = !g.done;
+        g.completedAt = g.done ? Date.now() : null;
         render();
       } else if(action === "add-subtask"){
         e.stopPropagation(); openSubtaskEditor(goalId, null);
@@ -1088,7 +1281,10 @@
         e.stopPropagation();
         var s = findSub(goalId, subId);
         s.done = !s.done;
+        s.completedAt = s.done ? Date.now() : null;
         render();
+      } else if(action === "edit-sub"){
+        e.stopPropagation(); openSubtaskEditor(goalId, subId);
       } else if(action === "delete-sub"){
         e.stopPropagation();
         var g2 = findGoal(goalId);
@@ -1205,19 +1401,16 @@
     subtaskContext = { goalId: goalId, subtaskId: subId };
     var titleEl = document.getElementById("subModalTitle");
     var titleInput = document.getElementById("subTitleInput");
-    var prioInput = document.getElementById("subPriorityInput");
     var deadlineInput = document.getElementById("subDeadlineInput");
 
     if(subId){
       var s = findSub(goalId, subId);
       titleEl.textContent = "Edit subtask";
       titleInput.value = s.title;
-      prioInput.value = s.priority;
       deadlineInput.value = s.deadline || "";
     } else {
       titleEl.textContent = "New subtask";
       titleInput.value = "";
-      prioInput.value = "medium";
       deadlineInput.value = "";
     }
     subOverlay.classList.add("show");
@@ -1227,15 +1420,14 @@
   document.getElementById("subSaveBtn").onclick = function(){
     var title = document.getElementById("subTitleInput").value.trim();
     if(!title){ alert("Give the subtask a title."); return; }
-    var priority = document.getElementById("subPriorityInput").value;
     var deadline = document.getElementById("subDeadlineInput").value;
     var g = findGoal(subtaskContext.goalId);
 
     if(subtaskContext.subtaskId){
       var s = findSub(subtaskContext.goalId, subtaskContext.subtaskId);
-      s.title = title; s.priority = priority; s.deadline = deadline;
+      s.title = title; s.deadline = deadline;
     } else {
-      g.subtasks.push({ id: uid(), title: title, priority: priority, deadline: deadline, done: false, manualPct: 0 });
+      g.subtasks.push({ id: uid(), title: title, deadline: deadline, done: false, manualPct: 0 });
     }
     subOverlay.classList.remove("show");
     openGoalId = g.id;
@@ -1246,13 +1438,26 @@
   var settingsOverlay = document.getElementById("settingsOverlay");
   function openSettings(){
     document.getElementById("warnHoursInput").value = state.settings.warnHours;
+    document.getElementById("userNameInput").value = state.settings.userName || "";
     updateSoundToggleUI();
+    updateNotifPermUI();
     settingsOverlay.classList.add("show");
   }
   document.getElementById("settingsBtn").onclick = openSettings;
   document.getElementById("syncStatus").onclick = openSettings;
   document.getElementById("settingsCloseBtn").onclick = function(){ settingsOverlay.classList.remove("show"); };
   settingsOverlay.onclick = function(e){ if(e.target === settingsOverlay) settingsOverlay.classList.remove("show"); };
+
+  document.getElementById("userNameInput").onchange = function(e){
+    state.settings.userName = e.target.value.trim();
+    renderHeading();
+    saveState();
+  };
+
+  document.getElementById("enableNotifBtn").onclick = function(){
+    if(!("Notification" in window)) return;
+    Notification.requestPermission().then(function(){ updateNotifPermUI(); });
+  };
 
   function updateSoundToggleUI(){
     var t = document.getElementById("soundToggle");
@@ -1274,7 +1479,7 @@
   document.getElementById("testSoundBtn").onclick = function(){ playAlertSound(); };
   document.getElementById("clearDataBtn").onclick = function(){
     if(confirm("This will permanently delete all goals and subtasks. Continue?")){
-      state = { goals: [], settings: { soundEnabled: true, warnHours: 48 } };
+      state = { goals: [], settings: { soundEnabled: true, warnHours: 48, userName: state.settings.userName || "" } };
       alertedIds = {};
       saveState();
       render();
@@ -1284,6 +1489,187 @@
 
   // ---------- Sort control ----------
   document.getElementById("sortSelect").onchange = renderGoalList;
+
+  // ---------- Subtask drag-to-reorder ----------
+  var dragState = null;
+
+  function initSubtaskDrag(){
+    var list = document.getElementById("goalList");
+
+    list.addEventListener("pointerdown", function(e){
+      var handle = e.target.closest(".drag-handle");
+      if(!handle) return;
+      var row = handle.closest(".subtask");
+      if(!row) return;
+      var goalCard = row.closest(".goal");
+      dragState = {
+        row: row,
+        container: row.parentElement,
+        goalId: goalCard ? goalCard.getAttribute("data-goal-id") : null,
+        pointerId: e.pointerId
+      };
+      row.classList.add("dragging");
+      try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+      e.preventDefault();
+    });
+
+    list.addEventListener("pointermove", function(e){
+      if(!dragState || e.pointerId !== dragState.pointerId) return;
+      var container = dragState.container;
+      var row = dragState.row;
+      var siblings = Array.prototype.filter.call(container.children, function(c){
+        return c !== row && c.classList && c.classList.contains("subtask");
+      });
+      var y = e.clientY;
+      var target = null;
+      for(var i=0;i<siblings.length;i++){
+        var rect = siblings[i].getBoundingClientRect();
+        if(y < rect.top + rect.height/2){ target = siblings[i]; break; }
+      }
+      if(target){ container.insertBefore(row, target); }
+      else { container.appendChild(row); }
+    });
+
+    function endDrag(e){
+      if(!dragState || (e.pointerId !== undefined && e.pointerId !== dragState.pointerId)) return;
+      dragState.row.classList.remove("dragging");
+      var g = findGoal(dragState.goalId);
+      if(g){
+        var newOrderIds = Array.prototype.map.call(
+          dragState.container.querySelectorAll(".subtask"),
+          function(el){ return el.getAttribute("data-sub-id"); }
+        );
+        g.subtasks.sort(function(a,b){ return newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id); });
+        saveState(); // persists new order locally and pushes it to Drive
+      }
+      dragState = null;
+    }
+    list.addEventListener("pointerup", endDrag);
+    list.addEventListener("pointercancel", endDrag);
+  }
+
+  // ---------- Monthly report ----------
+  var reportMonthOffset = 0;
+
+  function getReportMonthDate(){
+    var d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + reportMonthOffset);
+    return d;
+  }
+
+  function isInReportMonth(dateStr){
+    if(!dateStr) return false;
+    var d = new Date(dateStr + "T00:00:00");
+    var m = getReportMonthDate();
+    return d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth();
+  }
+
+  function goalCompletedAt(g){
+    if(!g.subtasks || g.subtasks.length === 0) return g.completedAt || null;
+    var max = null;
+    g.subtasks.forEach(function(s){
+      if(s.completedAt && (!max || s.completedAt > max)) max = s.completedAt;
+    });
+    return max;
+  }
+
+  function openReport(){
+    document.getElementById("mainApp").style.display = "none";
+    document.getElementById("reportPage").style.display = "block";
+    reportMonthOffset = 0;
+    renderReport();
+  }
+  function closeReport(){
+    document.getElementById("reportPage").style.display = "none";
+    document.getElementById("mainApp").style.display = "block";
+  }
+  document.getElementById("monthlyReportBtn").onclick = openReport;
+  document.getElementById("reportBackBtn").onclick = closeReport;
+  document.getElementById("reportPrevMonth").onclick = function(){ reportMonthOffset--; renderReport(); };
+  document.getElementById("reportNextMonth").onclick = function(){ reportMonthOffset++; renderReport(); };
+
+  function tallyForMonth(){
+    var goalStats = {onTime:0, late:0, pending:0, total:0};
+    var subStats = {onTime:0, late:0, pending:0, total:0};
+
+    state.goals.forEach(function(g){
+      if(isInReportMonth(g.deadline)){
+        goalStats.total++;
+        if(goalIsDone(g)){
+          var cAt = goalCompletedAt(g);
+          var deadlineEnd = new Date(g.deadline + "T23:59:59").getTime();
+          if(cAt && cAt <= deadlineEnd) goalStats.onTime++; else goalStats.late++;
+        } else {
+          goalStats.pending++;
+        }
+      }
+      (g.subtasks||[]).forEach(function(s){
+        if(isInReportMonth(s.deadline)){
+          subStats.total++;
+          if(s.done){
+            var sDeadlineEnd = new Date(s.deadline + "T23:59:59").getTime();
+            if(s.completedAt && s.completedAt <= sDeadlineEnd) subStats.onTime++; else subStats.late++;
+          } else {
+            subStats.pending++;
+          }
+        }
+      });
+    });
+    return { goalStats: goalStats, subStats: subStats };
+  }
+
+  function buildDonut(stats){
+    var total = stats.total || 1;
+    var parts = [
+      {v: stats.onTime, c: "#2DD4BF"},
+      {v: stats.late, c: "#F2555A"},
+      {v: stats.pending, c: "#F2A94A"}
+    ];
+    var r = 50, cx = 64, cy = 64, circumference = 2*Math.PI*r;
+    var offset = 0;
+    var circles = parts.map(function(p){
+      var frac = p.v/total;
+      var dash = frac*circumference;
+      var circle = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+p.c+'" stroke-width="16" ' +
+        'stroke-dasharray="'+dash+' '+(circumference-dash)+'" stroke-dashoffset="'+(-offset)+'" ' +
+        'transform="rotate(-90 '+cx+' '+cy+')" />';
+      offset += dash;
+      return circle;
+    }).join("");
+    return '<svg viewBox="0 0 128 128" width="150" height="150">' +
+      '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#2A3645" stroke-width="16" />' +
+      circles +
+      '<text x="64" y="70" text-anchor="middle" fill="#E8ECEF" font-size="22" font-family="Fraunces, serif">'+stats.total+'</text>' +
+    '</svg>';
+  }
+
+  function donutLegend(stats){
+    return '<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:10px;font-size:12px;color:var(--text-dim);">' +
+      '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#2DD4BF;margin-right:5px;"></span>On time ('+stats.onTime+')</span>' +
+      '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#F2555A;margin-right:5px;"></span>Late ('+stats.late+')</span>' +
+      '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#F2A94A;margin-right:5px;"></span>Pending ('+stats.pending+')</span>' +
+    '</div>';
+  }
+
+  function renderReport(){
+    var m = getReportMonthDate();
+    document.getElementById("reportMonthLabel").textContent = m.toLocaleDateString(undefined, {month:"long", year:"numeric"});
+
+    var tallies = tallyForMonth();
+    var gS = tallies.goalStats, sS = tallies.subStats;
+
+    document.getElementById("reportSummary").innerHTML =
+      stat(gS.total, "Goals due", "") +
+      stat(gS.onTime, "Goals on time", "done") +
+      stat(sS.total, "Subtasks due", "") +
+      stat(sS.onTime, "Subtasks on time", "done");
+
+    document.getElementById("reportGoalsChart").innerHTML =
+      (gS.total > 0 ? buildDonut(gS) + donutLegend(gS) : '<div class="upcoming-empty">No goals had a deadline this month.</div>');
+    document.getElementById("reportSubtasksChart").innerHTML =
+      (sS.total > 0 ? buildDonut(sS) + donutLegend(sS) : '<div class="upcoming-empty">No subtasks had a deadline this month.</div>');
+  }
 
   // ---------- Periodic re-check for deadline alerts ----------
   setInterval(function(){
@@ -1297,6 +1683,7 @@
   // ---------- Init ----------
   render();
   initGoogleDrive();
+  initSubtaskDrag();
 
   if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(function(e){

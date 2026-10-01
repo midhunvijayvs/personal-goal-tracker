@@ -1,8 +1,8 @@
-// Minimal service worker: caches the app shell so Trajectory opens instantly
+// Minimal service worker: caches the app shell so Personal Assistant opens instantly
 // (and still opens, just without fresh data) even with a flaky connection.
 // Your actual goal data lives in Google Drive, not in this cache.
 
-var CACHE_NAME = "trajectory-shell-v1";
+var CACHE_NAME = "personal-assistant-shell-v1";
 var SHELL_FILES = [
   "./index.html",
   "./manifest.webmanifest",
