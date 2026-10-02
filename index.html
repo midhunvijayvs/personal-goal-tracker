@@ -365,6 +365,49 @@
   }
   .gear-btn:hover{color:var(--text);background:var(--panel-hover);}
 
+  .nav-grid{display:flex;gap:12px;flex-wrap:wrap;margin:22px 0;}
+  .nav-card{
+    flex:1;min-width:140px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px;
+    text-align:left;
+    color:var(--text);
+    cursor:pointer;
+  }
+  .nav-card:hover{background:var(--panel-hover);}
+  .nav-card .nav-icon{font-size:22px;}
+  .nav-card .nav-label{font-family:'Fraunces',serif;font-size:16px;font-weight:600;margin-top:8px;}
+
+  .app-footer{
+    text-align:center;
+    margin-top:40px;
+    padding-top:20px;
+    border-top:1px solid var(--border);
+    color:var(--text-faint);
+    font-size:12px;
+    line-height:1.7;
+  }
+
+  .radio-row{display:flex;gap:16px;align-items:center;padding-top:7px;}
+  .radio-row label{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--text);cursor:pointer;}
+  .radio-row input[type=radio]{accent-color:var(--teal);width:auto;}
+
+  .checkbox-row{display:flex;align-items:center;gap:9px;}
+  .checkbox-row input[type=checkbox]{width:auto;accent-color:var(--teal);}
+  .checkbox-row label{margin:0;font-size:13px;color:var(--text-dim);}
+
+  .mini-list-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 0;
+    border-top:1px solid var(--border);
+    font-size:13.5px;
+  }
+  .mini-list-row:first-child{border-top:none;}
+
   .add-sub-row, .add-goal-row{
     margin-top:12px;
   }
@@ -515,14 +558,47 @@
 
 <button id="settingsBtn" class="gear-btn" title="Settings" aria-label="Settings">⚙</button>
 
-<div class="app" id="mainApp">
+<!-- Home Page -->
+<div class="app" id="page-home">
   <header class="top">
     <div>
       <h1 id="appHeading">Personal Assistant</h1>
-      <div class="tagline">Your goals, broken down and on track.</div>
+      <div class="tagline">Your goals, routines, and finances, all in one place.</div>
     </div>
     <div class="top-actions">
       <span id="syncStatus" class="pill ok" style="cursor:pointer;" title="Click to open sync settings">Not connected</span>
+    </div>
+  </header>
+
+  <div class="dashboard" id="homeSummary"></div>
+
+  <div class="nav-grid">
+    <button class="nav-card" data-nav="page-goals"><div class="nav-icon">🎯</div><div class="nav-label">Goals</div></button>
+    <button class="nav-card" data-nav="page-routines"><div class="nav-icon">🔁</div><div class="nav-label">Routines</div></button>
+    <button class="nav-card" data-nav="page-financials"><div class="nav-icon">💰</div><div class="nav-label">Financials</div></button>
+    <button class="nav-card" data-nav="page-report"><div class="nav-icon">📊</div><div class="nav-label">Monthly report</div></button>
+  </div>
+
+  <div class="upcoming" id="homeGoalsChartWrap" style="text-align:center;">
+    <h3 style="text-align:left;">This month at a glance — goals</h3>
+    <div id="homeGoalsChart"></div>
+  </div>
+
+  <div class="app-footer">
+    <div>Midhun Vijay</div>
+    <div>Soulcast AI and Robotics pvt. ltd</div>
+  </div>
+</div>
+
+<!-- Goals Page -->
+<div class="app" id="page-goals" style="display:none;">
+  <header class="top">
+    <div>
+      <h1 style="font-size:24px;">Goals</h1>
+      <div class="tagline">Your goals, broken down and on track.</div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-ghost btn-sm" data-nav="page-home">← Home</button>
       <button class="btn btn-primary" id="newGoalBtn">+ New goal</button>
     </div>
   </header>
@@ -537,7 +613,7 @@
   <div class="controls">
     <div style="font-size:13px;color:var(--text-dim);" id="goalCount"></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <button class="btn btn-ghost btn-sm" id="monthlyReportBtn">📊 Monthly report</button>
+      <button class="btn btn-ghost btn-sm" data-nav="page-report">📊 Monthly report</button>
       <select class="sort-select" id="sortSelect">
         <option value="deadline">Sort by deadline</option>
         <option value="priority">Sort by priority</option>
@@ -550,14 +626,63 @@
   <div id="goalList"></div>
 </div>
 
+<!-- Routines Page -->
+<div class="app" id="page-routines" style="display:none;">
+  <header class="top">
+    <div>
+      <h1 style="font-size:24px;">Routines</h1>
+      <div class="tagline">Recurring tasks you keep coming back to.</div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-ghost btn-sm" data-nav="page-home">← Home</button>
+      <button class="btn btn-primary" id="newRoutineBtn">+ New routine</button>
+    </div>
+  </header>
+
+  <div class="dashboard" id="routineSummary"></div>
+
+  <div class="controls">
+    <div style="font-size:13px;color:var(--text-dim);" id="routineCount"></div>
+    <button class="btn btn-ghost btn-sm" data-nav="page-report">📊 Monthly report</button>
+  </div>
+
+  <div id="routineList"></div>
+</div>
+
+<!-- Financials Page -->
+<div class="app" id="page-financials" style="display:none;">
+  <header class="top">
+    <div>
+      <h1 style="font-size:24px;">Financials</h1>
+      <div class="tagline">All your personal liquid cash, in one place.</div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-ghost btn-sm" data-nav="page-home">← Home</button>
+      <button class="btn btn-primary" id="addTxnBtn">+ Add transaction</button>
+    </div>
+  </header>
+
+  <div class="dashboard" id="financeSummary"></div>
+
+  <div class="controls">
+    <div style="font-size:13px;color:var(--text-dim);" id="txnCount"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" id="manageBalancesBtn">Starting balances</button>
+      <button class="btn btn-ghost btn-sm" data-nav="page-report">📊 Monthly report</button>
+    </div>
+  </div>
+
+  <div id="txnList"></div>
+</div>
+
 <!-- Monthly Report Page -->
-<div class="app" id="reportPage" style="display:none;">
+<div class="app" id="page-report" style="display:none;">
   <header class="top">
     <div>
       <h1 style="font-size:24px;">Monthly report</h1>
     </div>
     <div class="top-actions">
-      <button class="btn btn-ghost btn-sm" id="reportBackBtn">← Back</button>
+      <button class="btn btn-ghost btn-sm" data-nav="page-home">← Home</button>
     </div>
   </header>
 
@@ -567,8 +692,8 @@
     <button class="btn-icon" id="reportNextMonth" title="Next month">▶</button>
   </div>
 
+  <h3 style="margin:18px 0 10px;color:var(--text-dim);font-size:13px;">Goals</h3>
   <div class="dashboard" id="reportSummary"></div>
-
   <div style="display:flex;gap:16px;flex-wrap:wrap;">
     <div class="upcoming" style="flex:1;min-width:240px;text-align:center;">
       <h3 style="text-align:left;">Goals due this month</h3>
@@ -579,6 +704,12 @@
       <div id="reportSubtasksChart"></div>
     </div>
   </div>
+
+  <h3 style="margin:26px 0 10px;color:var(--text-dim);font-size:13px;">Routines</h3>
+  <div class="dashboard" id="reportRoutinesSummary"></div>
+
+  <h3 style="margin:26px 0 10px;color:var(--text-dim);font-size:13px;">Financials</h3>
+  <div class="dashboard" id="reportFinanceSummary"></div>
 </div>
 
 <!-- Goal Modal -->
@@ -633,6 +764,142 @@
   </div>
 </div>
 
+<!-- Routine Modal -->
+<div class="overlay" id="routineOverlay">
+  <div class="modal">
+    <h2 id="routineModalTitle">New routine</h2>
+    <div class="field">
+      <label>Routine name</label>
+      <input type="text" id="routineTitleInput" placeholder="e.g. Take multivitamin">
+    </div>
+    <div class="field">
+      <label>Frequency</label>
+      <select id="routineFrequencyInput">
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+    </div>
+    <div class="field checkbox-row">
+      <input type="checkbox" id="routineHasEndInput">
+      <label for="routineHasEndInput">Does it have an end date?</label>
+    </div>
+    <div class="field" id="routineEndDateField" style="display:none;">
+      <label>End date</label>
+      <input type="date" id="routineEndDateInput">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="routineCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="routineSaveBtn">Save routine</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transaction Modal -->
+<div class="overlay" id="txnOverlay">
+  <div class="modal">
+    <h2 id="txnModalTitle">New transaction</h2>
+    <div class="field">
+      <label>Description</label>
+      <input type="text" id="txnDescInput" placeholder="e.g. Grocery shopping">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Amount</label>
+        <input type="number" id="txnAmountInput" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label>Direction</label>
+        <div class="radio-row">
+          <label><input type="radio" name="txnDirection" value="in"> Came in</label>
+          <label><input type="radio" name="txnDirection" value="out" checked> Went out</label>
+        </div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Mode</label>
+        <select id="txnModeInput">
+          <option>UPI</option>
+          <option>Cash</option>
+          <option>Other Bank transfer</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <select id="txnCategoryInput">
+          <option>Salary</option>
+          <option>Business income</option>
+          <option>Food</option>
+          <option>Travel</option>
+          <option>Rent</option>
+          <option>Electricity</option>
+          <option>Internet</option>
+          <option>Phone Recharge</option>
+          <option>School/College Fee</option>
+          <option>Medicine</option>
+          <option>Apparels</option>
+          <option>Cosmetics</option>
+          <option>Entertainment</option>
+          <option>Online Subscription</option>
+          <option>Service charges</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="txnDateInput">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="txnCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="txnSaveBtn">Save transaction</button>
+    </div>
+  </div>
+</div>
+
+<!-- Starting Balances Modal -->
+<div class="overlay" id="balancesOverlay">
+  <div class="modal">
+    <h2>Starting balances</h2>
+    <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px;">
+      Add the cash you're starting with in each place — a bank account, your wallet, cash at home. These are only added once, as your opening balance.
+    </div>
+    <div id="balancesList"></div>
+    <div class="field-row" style="margin-top:14px;">
+      <div class="field">
+        <label>Label</label>
+        <input type="text" id="newBalanceLabel" placeholder="e.g. HDFC Bank SB account">
+      </div>
+      <div class="field">
+        <label>Amount</label>
+        <input type="number" id="newBalanceAmount" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="balancesCloseBtn">Close</button>
+      <button class="btn btn-primary" id="addBalanceBtn">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- About Modal -->
+<div class="overlay" id="aboutOverlay">
+  <div class="modal">
+    <h2>About</h2>
+    <p style="font-size:13.5px;color:var(--text-dim);line-height:1.8;">
+      <strong style="color:var(--text);">Personal Assistant</strong><br>
+      A personal goals, routines, and finance tracker.<br><br>
+      Developed by<br>
+      <strong style="color:var(--text);">Midhun Vijay</strong><br>
+      Soulcast AI and Robotics pvt. ltd
+    </p>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="aboutCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Settings Modal -->
 <div class="overlay" id="settingsOverlay">
   <div class="modal">
@@ -665,6 +932,10 @@
     <div class="settings-row">
       <span id="notifPermLabel">Phone/browser notifications: not enabled</span>
       <button class="btn btn-sm btn-ghost" id="enableNotifBtn">Enable</button>
+    </div>
+    <div class="settings-row">
+      <span>About this app</span>
+      <button class="btn btn-sm btn-ghost" id="aboutBtn">About</button>
     </div>
     <div class="settings-row">
       <span style="color:var(--red);">Clear all data</span>
@@ -701,11 +972,17 @@
         if(typeof parsed.settings.userName !== "string") parsed.settings.userName = "";
         if(typeof parsed.settings.soundEnabled !== "boolean") parsed.settings.soundEnabled = true;
         if(typeof parsed.settings.warnHours !== "number") parsed.settings.warnHours = 48;
+        if(!parsed.routines) parsed.routines = [];
+        if(!parsed.finance) parsed.finance = {};
+        if(!parsed.finance.initialBalances) parsed.finance.initialBalances = [];
+        if(!parsed.finance.transactions) parsed.finance.transactions = [];
         return parsed;
       }
     }catch(e){ console.error("Could not load saved data", e); }
     return {
       goals: [],
+      routines: [],
+      finance: { initialBalances: [], transactions: [] },
       settings: { soundEnabled: true, warnHours: 48, userName: "" }
     };
   }
@@ -721,11 +998,14 @@
   // Paste your own OAuth Client ID below if it ever changes. This ID is public
   // and safe to embed here — it's not a secret.
   var DRIVE_CLIENT_ID = "196324205483-t6ulmlbh78gau4q0dg637t9bt8k8upjs.apps.googleusercontent.com";
-  var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
+  // "email" scope added so we can remember which Google account you picked, and
+  // skip the account-chooser popup on future silent reconnects.
+  var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email";
   var DRIVE_FILE_NAME = "personal-assistant-data.json";
   var DRIVE_LEGACY_FILE_NAME = "trajectory-data.json"; // pre-rename filename, kept for one-time migration
   var DRIVE_CONNECTED_KEY = "personal_assistant_drive_connected";
   var DRIVE_LEGACY_CONNECTED_KEY = "trajectory_drive_connected";
+  var DRIVE_ACCOUNT_HINT_KEY = "personal_assistant_drive_account_hint";
 
   var driveTokenClient = null;
   var driveAccessToken = null;
@@ -776,6 +1056,7 @@
           driveAccessToken = resp.access_token;
           localStorage.setItem(DRIVE_CONNECTED_KEY, "true");
           updateSyncUI(true, true);
+          fetchAndStoreAccountHint();
           pullFromDrive(function(){ updateSyncUI(true, false); setLastSyncedNow(); });
         }
       },
@@ -790,8 +1071,18 @@
       localStorage.setItem(DRIVE_CONNECTED_KEY, "true");
     }
     if(localStorage.getItem(DRIVE_CONNECTED_KEY) === "true"){
-      driveTokenClient.requestAccessToken({ prompt: "" });
+      var savedHint = localStorage.getItem(DRIVE_ACCOUNT_HINT_KEY);
+      driveTokenClient.requestAccessToken(savedHint ? { prompt: "", hint: savedHint } : { prompt: "" });
     }
+  }
+
+  function fetchAndStoreAccountHint(){
+    if(localStorage.getItem(DRIVE_ACCOUNT_HINT_KEY)) return; // already remembered
+    driveApiFetch("https://www.googleapis.com/oauth2/v3/userinfo")
+      .then(function(r){ return r.json(); })
+      .then(function(info){
+        if(info && info.email) localStorage.setItem(DRIVE_ACCOUNT_HINT_KEY, info.email);
+      }).catch(function(){ /* non-critical — just means the chooser may reappear */ });
   }
 
   document.getElementById("driveConnectBtn").addEventListener("click", function(){
@@ -806,6 +1097,7 @@
     driveAccessToken = null;
     driveFileId = null;
     localStorage.removeItem(DRIVE_CONNECTED_KEY);
+    localStorage.removeItem(DRIVE_ACCOUNT_HINT_KEY);
     updateSyncUI(false, false);
   });
 
@@ -845,6 +1137,14 @@
         .then(function(r){ return r.json(); })
         .then(function(remote){
           if(remote && remote.goals){
+            if(!remote.settings) remote.settings = {};
+            if(typeof remote.settings.userName !== "string") remote.settings.userName = "";
+            if(typeof remote.settings.soundEnabled !== "boolean") remote.settings.soundEnabled = true;
+            if(typeof remote.settings.warnHours !== "number") remote.settings.warnHours = 48;
+            if(!remote.routines) remote.routines = [];
+            if(!remote.finance) remote.finance = {};
+            if(!remote.finance.initialBalances) remote.finance.initialBalances = [];
+            if(!remote.finance.transactions) remote.finance.transactions = [];
             isApplyingRemoteState = true;
             state = remote;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -1478,11 +1778,15 @@
   };
   document.getElementById("testSoundBtn").onclick = function(){ playAlertSound(); };
   document.getElementById("clearDataBtn").onclick = function(){
-    if(confirm("This will permanently delete all goals and subtasks. Continue?")){
-      state = { goals: [], settings: { soundEnabled: true, warnHours: 48, userName: state.settings.userName || "" } };
+    if(confirm("This will permanently delete all goals, routines, and financial data. Continue?")){
+      state = {
+        goals: [], routines: [], finance: { initialBalances: [], transactions: [] },
+        settings: { soundEnabled: true, warnHours: 48, userName: state.settings.userName || "" }
+      };
       alertedIds = {};
       saveState();
       render();
+      renderHome();
       settingsOverlay.classList.remove("show");
     }
   };
@@ -1548,22 +1852,26 @@
     list.addEventListener("pointercancel", endDrag);
   }
 
-  // ---------- Monthly report ----------
-  var reportMonthOffset = 0;
+  // ---------- Page navigation ----------
+  var PAGE_IDS = ["page-home", "page-goals", "page-routines", "page-financials", "page-report"];
+  var currentPageId = "page-home";
 
-  function getReportMonthDate(){
-    var d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() + reportMonthOffset);
-    return d;
+  function showPage(id){
+    currentPageId = id;
+    PAGE_IDS.forEach(function(p){
+      var el = document.getElementById(p);
+      if(el) el.style.display = (p === id) ? "block" : "none";
+    });
+    if(id === "page-home") renderHome();
+    else if(id === "page-routines") renderRoutines();
+    else if(id === "page-financials") renderFinancials();
+    else if(id === "page-report"){ reportMonthOffset = 0; renderReport(); }
   }
 
-  function isInReportMonth(dateStr){
-    if(!dateStr) return false;
-    var d = new Date(dateStr + "T00:00:00");
-    var m = getReportMonthDate();
-    return d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth();
-  }
+  document.body.addEventListener("click", function(e){
+    var btn = e.target.closest("[data-nav]");
+    if(btn) showPage(btn.getAttribute("data-nav"));
+  });
 
   function goalCompletedAt(g){
     if(!g.subtasks || g.subtasks.length === 0) return g.completedAt || null;
@@ -1574,27 +1882,18 @@
     return max;
   }
 
-  function openReport(){
-    document.getElementById("mainApp").style.display = "none";
-    document.getElementById("reportPage").style.display = "block";
-    reportMonthOffset = 0;
-    renderReport();
+  function isInMonth(dateStr, monthDate){
+    if(!dateStr) return false;
+    var d = new Date(dateStr + "T00:00:00");
+    return d.getFullYear() === monthDate.getFullYear() && d.getMonth() === monthDate.getMonth();
   }
-  function closeReport(){
-    document.getElementById("reportPage").style.display = "none";
-    document.getElementById("mainApp").style.display = "block";
-  }
-  document.getElementById("monthlyReportBtn").onclick = openReport;
-  document.getElementById("reportBackBtn").onclick = closeReport;
-  document.getElementById("reportPrevMonth").onclick = function(){ reportMonthOffset--; renderReport(); };
-  document.getElementById("reportNextMonth").onclick = function(){ reportMonthOffset++; renderReport(); };
 
-  function tallyForMonth(){
+  function tallyGoalsForMonth(monthDate){
     var goalStats = {onTime:0, late:0, pending:0, total:0};
     var subStats = {onTime:0, late:0, pending:0, total:0};
 
     state.goals.forEach(function(g){
-      if(isInReportMonth(g.deadline)){
+      if(isInMonth(g.deadline, monthDate)){
         goalStats.total++;
         if(goalIsDone(g)){
           var cAt = goalCompletedAt(g);
@@ -1605,7 +1904,7 @@
         }
       }
       (g.subtasks||[]).forEach(function(s){
-        if(isInReportMonth(s.deadline)){
+        if(isInMonth(s.deadline, monthDate)){
           subStats.total++;
           if(s.done){
             var sDeadlineEnd = new Date(s.deadline + "T23:59:59").getTime();
@@ -1652,23 +1951,469 @@
     '</div>';
   }
 
+  // ---------- Routines ----------
+  function pad2(n){ return n < 10 ? "0"+n : ""+n; }
+
+  function currentPeriodKey(freq){
+    var now = new Date();
+    if(freq === "daily"){
+      return now.getFullYear()+"-"+pad2(now.getMonth()+1)+"-"+pad2(now.getDate());
+    }
+    if(freq === "weekly"){
+      var sunday = new Date(now);
+      sunday.setDate(now.getDate() - now.getDay());
+      return sunday.getFullYear()+"-"+pad2(sunday.getMonth()+1)+"-"+pad2(sunday.getDate());
+    }
+    return now.getFullYear()+"-"+pad2(now.getMonth()+1); // monthly
+  }
+
+  function routineHasEnded(r){
+    return !!(r.hasEndDate && r.endDate && new Date(r.endDate+"T23:59:59") < new Date());
+  }
+
+  function routineDoneForPeriod(r){
+    return r.lastCompletedPeriod === currentPeriodKey(r.frequency);
+  }
+
+  function countExpectedPeriods(routine, monthDate){
+    var year = monthDate.getFullYear(), month = monthDate.getMonth();
+    var monthStart = new Date(year, month, 1);
+    var monthEnd = new Date(year, month+1, 0, 23, 59, 59);
+    var created = new Date(routine.createdAt || 0);
+    var end = (routine.hasEndDate && routine.endDate) ? new Date(routine.endDate+"T23:59:59") : null;
+    var rangeStart = created > monthStart ? created : monthStart;
+    var rangeEnd = (end && end < monthEnd) ? end : monthEnd;
+    if(rangeStart > rangeEnd) return 0;
+    if(routine.frequency === "monthly") return 1;
+    var days = Math.floor((rangeEnd - rangeStart)/86400000) + 1;
+    if(routine.frequency === "daily") return days;
+    if(routine.frequency === "weekly") return Math.max(1, Math.round(days/7));
+    return 0;
+  }
+
+  function countCompletedInMonth(routine, monthDate){
+    var year = monthDate.getFullYear(), month = monthDate.getMonth();
+    return (routine.completions||[]).filter(function(ts){
+      var d = new Date(ts);
+      return d.getFullYear() === year && d.getMonth() === month;
+    }).length;
+  }
+
+  function findRoutine(id){
+    return (state.routines||[]).find(function(r){ return r.id === id; });
+  }
+
+  function renderRoutines(){
+    var list = state.routines || [];
+    var countEl = document.getElementById("routineCount");
+    countEl.textContent = list.length + (list.length === 1 ? " routine" : " routines");
+
+    var active = list.filter(function(r){ return !routineHasEnded(r); });
+    var doneCount = active.filter(routineDoneForPeriod).length;
+    document.getElementById("routineSummary").innerHTML =
+      stat(list.length, "Total routines", "") +
+      stat(doneCount, "Done this period", "done") +
+      stat(active.length - doneCount, "Pending", "urgent");
+
+    var el = document.getElementById("routineList");
+    if(list.length === 0){
+      el.innerHTML = '<div class="empty-state"><div class="big">No routines yet</div>Add something you do daily, weekly, or monthly.</div>';
+      return;
+    }
+    el.innerHTML = list.map(renderRoutineCard).join("");
+  }
+
+  function renderRoutineCard(r){
+    var ended = routineHasEnded(r);
+    var done = routineDoneForPeriod(r);
+    var periodLabel = r.frequency === "daily" ? "today" : (r.frequency === "weekly" ? "this week" : "this month");
+    var statusPill = ended ? '<span class="pill ok">Ended</span>' : (done ? '<span class="pill ok">Done '+periodLabel+'</span>' : '<span class="pill urgent">Pending '+periodLabel+'</span>');
+    var doneBtn = (!ended && !done) ? '<button class="btn btn-sm btn-primary" data-action="routine-done" data-routine="'+r.id+'">Mark done</button>' : "";
+
+    return '<div class="goal pri-low" data-routine-id="'+r.id+'">' +
+      '<div class="goal-head" style="cursor:default;align-items:center;">' +
+        '<div class="goal-title-wrap">' +
+          '<p class="goal-title">'+escapeHtml(r.title)+'</p>' +
+          '<div class="goal-head-controls">' +
+            '<div class="goal-meta"><span style="text-transform:capitalize;">'+r.frequency+'</span>'+statusPill+
+              (r.hasEndDate && r.endDate ? '<span>Ends '+formatDeadline(r.endDate)+'</span>' : '') +
+            '</div>' +
+            doneBtn +
+            '<div class="goal-actions">' +
+              '<button class="btn-icon" data-action="edit-routine" data-routine="'+r.id+'" title="Edit">✎</button>' +
+              '<button class="btn-icon" data-action="delete-routine" data-routine="'+r.id+'" title="Delete">🗑</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  document.getElementById("routineList") && document.getElementById("routineList").addEventListener("click", function(e){
+    var btn = e.target.closest("[data-action]");
+    if(!btn) return;
+    var action = btn.getAttribute("data-action");
+    var routineId = btn.getAttribute("data-routine");
+    if(action === "routine-done"){
+      var r = findRoutine(routineId);
+      r.lastCompletedPeriod = currentPeriodKey(r.frequency);
+      r.completions = r.completions || [];
+      r.completions.push(Date.now());
+      saveState();
+      renderRoutines();
+    } else if(action === "edit-routine"){
+      openRoutineEditor(routineId);
+    } else if(action === "delete-routine"){
+      if(confirm("Delete this routine?")){
+        state.routines = state.routines.filter(function(r){ return r.id !== routineId; });
+        saveState();
+        renderRoutines();
+      }
+    }
+  });
+
+  var routineOverlay = document.getElementById("routineOverlay");
+  var editingRoutineId = null;
+  document.getElementById("newRoutineBtn").onclick = function(){ openRoutineEditor(null); };
+  document.getElementById("routineCancelBtn").onclick = function(){ routineOverlay.classList.remove("show"); };
+  routineOverlay.onclick = function(e){ if(e.target === routineOverlay) routineOverlay.classList.remove("show"); };
+  document.getElementById("routineHasEndInput").onchange = function(e){
+    document.getElementById("routineEndDateField").style.display = e.target.checked ? "" : "none";
+  };
+
+  function openRoutineEditor(routineId){
+    editingRoutineId = routineId;
+    var titleEl = document.getElementById("routineModalTitle");
+    var titleInput = document.getElementById("routineTitleInput");
+    var freqInput = document.getElementById("routineFrequencyInput");
+    var hasEndInput = document.getElementById("routineHasEndInput");
+    var endDateInput = document.getElementById("routineEndDateInput");
+    var endDateField = document.getElementById("routineEndDateField");
+
+    if(routineId){
+      var r = findRoutine(routineId);
+      titleEl.textContent = "Edit routine";
+      titleInput.value = r.title;
+      freqInput.value = r.frequency;
+      hasEndInput.checked = !!r.hasEndDate;
+      endDateInput.value = r.endDate || "";
+      endDateField.style.display = r.hasEndDate ? "" : "none";
+    } else {
+      titleEl.textContent = "New routine";
+      titleInput.value = "";
+      freqInput.value = "daily";
+      hasEndInput.checked = false;
+      endDateInput.value = "";
+      endDateField.style.display = "none";
+    }
+    routineOverlay.classList.add("show");
+    titleInput.focus();
+  }
+
+  document.getElementById("routineSaveBtn").onclick = function(){
+    var title = document.getElementById("routineTitleInput").value.trim();
+    if(!title){ alert("Give the routine a name."); return; }
+    var frequency = document.getElementById("routineFrequencyInput").value;
+    var hasEndDate = document.getElementById("routineHasEndInput").checked;
+    var endDate = document.getElementById("routineEndDateInput").value;
+
+    if(editingRoutineId){
+      var r = findRoutine(editingRoutineId);
+      r.title = title; r.frequency = frequency; r.hasEndDate = hasEndDate; r.endDate = hasEndDate ? endDate : "";
+    } else {
+      state.routines.push({
+        id: uid(), title: title, frequency: frequency, hasEndDate: hasEndDate, endDate: hasEndDate ? endDate : "",
+        lastCompletedPeriod: null, completions: [], createdAt: Date.now()
+      });
+    }
+    routineOverlay.classList.remove("show");
+    saveState();
+    renderRoutines();
+  };
+
+  // ---------- Financials ----------
+  function formatMoney(n){
+    n = n || 0;
+    var sign = n < 0 ? "-" : "";
+    return sign + "₹" + Math.abs(n).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  function financeBalance(){
+    var total = (state.finance.initialBalances||[]).reduce(function(s,b){ return s + b.amount; }, 0);
+    (state.finance.transactions||[]).forEach(function(t){
+      total += (t.direction === "in" ? t.amount : -t.amount);
+    });
+    return total;
+  }
+
+  function financeTotalsForMonth(monthDate){
+    var received = 0, spent = 0;
+    (state.finance.transactions||[]).forEach(function(t){
+      if(isInMonth(t.date, monthDate)){
+        if(t.direction === "in") received += t.amount; else spent += t.amount;
+      }
+    });
+    return { received: received, spent: spent };
+  }
+
+  function formatDateShort(dateStr){
+    var d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString(undefined, {month:"short", day:"numeric"});
+  }
+
+  function renderFinancials(){
+    var bal = financeBalance();
+    var mt = financeTotalsForMonth(new Date());
+    document.getElementById("financeSummary").innerHTML =
+      stat(formatMoney(bal), "Current balance", "") +
+      stat(formatMoney(mt.received), "Received this month", "done") +
+      stat(formatMoney(mt.spent), "Spent this month", "overdue") +
+      stat(formatMoney(mt.received - mt.spent), "Net this month", "");
+    renderTxnList();
+  }
+
+  function renderTxnList(){
+    var el = document.getElementById("txnList");
+    var txns = (state.finance.transactions||[]).slice().sort(function(a,b){
+      return new Date(b.date) - new Date(a.date) || (b.recordedAt||0) - (a.recordedAt||0);
+    });
+    document.getElementById("txnCount").textContent = txns.length + (txns.length === 1 ? " transaction" : " transactions");
+    if(txns.length === 0){
+      el.innerHTML = '<div class="empty-state"><div class="big">No transactions yet</div>Add your first one to start tracking.</div>';
+      return;
+    }
+    var order = [], groups = {};
+    txns.forEach(function(t){
+      var key = monthGroupLabel(t.date);
+      if(!groups[key]){ groups[key] = []; order.push(key); }
+      groups[key].push(t);
+    });
+    el.innerHTML = order.map(function(key){
+      return '<div class="month-group-title">'+escapeHtml(key)+'</div>' + groups[key].map(renderTxnRow).join("");
+    }).join("");
+  }
+
+  function renderTxnRow(t){
+    var isIn = t.direction === "in";
+    var color = isIn ? "var(--teal)" : "var(--red)";
+    return '<div class="goal" style="border-left-color:'+color+';" data-txn-id="'+t.id+'">' +
+      '<div class="goal-head" style="cursor:default;align-items:center;">' +
+        '<div class="goal-title-wrap">' +
+          '<p class="goal-title">'+escapeHtml(t.description)+'</p>' +
+          '<div class="goal-head-controls">' +
+            '<div class="goal-meta"><span>'+escapeHtml(t.category)+'</span><span>'+escapeHtml(t.mode)+'</span><span>'+formatDateShort(t.date)+'</span></div>' +
+            '<div style="font-family:\'Fraunces\',serif;font-weight:600;color:'+color+';white-space:nowrap;">'+(isIn?'+':'-')+'₹'+t.amount.toFixed(2)+'</div>' +
+            '<div class="goal-actions">' +
+              '<button class="btn-icon" data-action="edit-txn" data-txn="'+t.id+'" title="Edit">✎</button>' +
+              '<button class="btn-icon" data-action="delete-txn" data-txn="'+t.id+'" title="Delete">🗑</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  document.getElementById("txnList") && document.getElementById("txnList").addEventListener("click", function(e){
+    var btn = e.target.closest("[data-action]");
+    if(!btn) return;
+    var action = btn.getAttribute("data-action");
+    var txnId = btn.getAttribute("data-txn");
+    if(action === "edit-txn"){
+      openTxnEditor(txnId);
+    } else if(action === "delete-txn"){
+      if(confirm("Delete this transaction?")){
+        state.finance.transactions = state.finance.transactions.filter(function(t){ return t.id !== txnId; });
+        saveState();
+        renderFinancials();
+      }
+    }
+  });
+
+  function findTxn(id){
+    return (state.finance.transactions||[]).find(function(t){ return t.id === id; });
+  }
+
+  var txnOverlay = document.getElementById("txnOverlay");
+  var editingTxnId = null;
+  document.getElementById("addTxnBtn").onclick = function(){ openTxnEditor(null); };
+  document.getElementById("txnCancelBtn").onclick = function(){ txnOverlay.classList.remove("show"); };
+  txnOverlay.onclick = function(e){ if(e.target === txnOverlay) txnOverlay.classList.remove("show"); };
+
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+  }
+
+  function openTxnEditor(txnId){
+    editingTxnId = txnId;
+    var titleEl = document.getElementById("txnModalTitle");
+    var descInput = document.getElementById("txnDescInput");
+    var amountInput = document.getElementById("txnAmountInput");
+    var modeInput = document.getElementById("txnModeInput");
+    var categoryInput = document.getElementById("txnCategoryInput");
+    var dateInput = document.getElementById("txnDateInput");
+
+    if(txnId){
+      var t = findTxn(txnId);
+      titleEl.textContent = "Edit transaction";
+      descInput.value = t.description;
+      amountInput.value = t.amount;
+      modeInput.value = t.mode;
+      categoryInput.value = t.category;
+      dateInput.value = t.date;
+      document.querySelector('input[name="txnDirection"][value="'+t.direction+'"]').checked = true;
+    } else {
+      titleEl.textContent = "New transaction";
+      descInput.value = "";
+      amountInput.value = "";
+      modeInput.value = "UPI";
+      categoryInput.value = "Food";
+      dateInput.value = todayStr();
+      document.querySelector('input[name="txnDirection"][value="out"]').checked = true;
+    }
+    txnOverlay.classList.add("show");
+    descInput.focus();
+  }
+
+  document.getElementById("txnSaveBtn").onclick = function(){
+    var description = document.getElementById("txnDescInput").value.trim();
+    if(!description){ alert("Give the transaction a description."); return; }
+    var amount = parseFloat(document.getElementById("txnAmountInput").value);
+    if(isNaN(amount) || amount < 0){ alert("Enter a valid amount."); return; }
+    var direction = document.querySelector('input[name="txnDirection"]:checked').value;
+    var mode = document.getElementById("txnModeInput").value;
+    var category = document.getElementById("txnCategoryInput").value;
+    var date = document.getElementById("txnDateInput").value || todayStr();
+
+    if(editingTxnId){
+      var t = findTxn(editingTxnId);
+      t.description = description; t.amount = amount; t.direction = direction;
+      t.mode = mode; t.category = category; t.date = date;
+    } else {
+      state.finance.transactions.push({
+        id: uid(), description: description, amount: amount, direction: direction,
+        mode: mode, category: category, date: date, recordedAt: Date.now()
+      });
+    }
+    txnOverlay.classList.remove("show");
+    saveState();
+    renderFinancials();
+  };
+
+  var balancesOverlay = document.getElementById("balancesOverlay");
+  document.getElementById("manageBalancesBtn").onclick = function(){
+    renderBalancesList();
+    balancesOverlay.classList.add("show");
+  };
+  document.getElementById("balancesCloseBtn").onclick = function(){
+    balancesOverlay.classList.remove("show");
+    renderFinancials();
+  };
+  balancesOverlay.onclick = function(e){ if(e.target === balancesOverlay){ balancesOverlay.classList.remove("show"); renderFinancials(); } };
+
+  function renderBalancesList(){
+    var el = document.getElementById("balancesList");
+    var list = state.finance.initialBalances || [];
+    if(list.length === 0){
+      el.innerHTML = '<div class="upcoming-empty">No starting balances added yet.</div>';
+      return;
+    }
+    el.innerHTML = list.map(function(b){
+      return '<div class="mini-list-row"><span>'+escapeHtml(b.label)+'</span>' +
+        '<span style="display:flex;align-items:center;gap:10px;">'+formatMoney(b.amount)+
+        '<button class="btn-icon" data-action="delete-balance" data-balance="'+b.id+'" title="Delete">🗑</button></span></div>';
+    }).join("");
+    el.querySelectorAll('[data-action="delete-balance"]').forEach(function(btn){
+      btn.onclick = function(){
+        var id = btn.getAttribute("data-balance");
+        state.finance.initialBalances = state.finance.initialBalances.filter(function(b){ return b.id !== id; });
+        saveState();
+        renderBalancesList();
+      };
+    });
+  }
+
+  document.getElementById("addBalanceBtn").onclick = function(){
+    var label = document.getElementById("newBalanceLabel").value.trim();
+    var amount = parseFloat(document.getElementById("newBalanceAmount").value);
+    if(!label){ alert("Give this balance a label, like \"HDFC Bank SB account\"."); return; }
+    if(isNaN(amount)){ alert("Enter a valid amount."); return; }
+    state.finance.initialBalances.push({ id: uid(), label: label, amount: amount });
+    document.getElementById("newBalanceLabel").value = "";
+    document.getElementById("newBalanceAmount").value = "";
+    saveState();
+    renderBalancesList();
+  };
+
+  // ---------- About ----------
+  var aboutOverlay = document.getElementById("aboutOverlay");
+  document.getElementById("aboutBtn").onclick = function(){ aboutOverlay.classList.add("show"); };
+  document.getElementById("aboutCloseBtn").onclick = function(){ aboutOverlay.classList.remove("show"); };
+  aboutOverlay.onclick = function(e){ if(e.target === aboutOverlay) aboutOverlay.classList.remove("show"); };
+
+  // ---------- Home page ----------
+  function renderHome(){
+    renderHeading();
+    var totalGoals = state.goals.length;
+    var doneGoals = state.goals.filter(goalIsDone).length;
+    var activeRoutines = (state.routines||[]).filter(function(r){ return !routineHasEnded(r); });
+    var doneRoutines = activeRoutines.filter(routineDoneForPeriod).length;
+    var bal = financeBalance();
+
+    document.getElementById("homeSummary").innerHTML =
+      stat(doneGoals+"/"+totalGoals, "Goals done", "") +
+      stat(doneRoutines+"/"+activeRoutines.length, "Routines done", "") +
+      stat(formatMoney(bal), "Current balance", "");
+
+    var gS = tallyGoalsForMonth(new Date()).goalStats;
+    document.getElementById("homeGoalsChart").innerHTML =
+      (gS.total > 0 ? buildDonut(gS) + donutLegend(gS) : '<div class="upcoming-empty">No goals have a deadline this month.</div>');
+  }
+
+  // ---------- Monthly report (covers goals, routines, financials) ----------
+  var reportMonthOffset = 0;
+
+  function getReportMonthDate(){
+    var d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + reportMonthOffset);
+    return d;
+  }
+
+  document.getElementById("reportPrevMonth").onclick = function(){ reportMonthOffset--; renderReport(); };
+  document.getElementById("reportNextMonth").onclick = function(){ reportMonthOffset++; renderReport(); };
+
   function renderReport(){
     var m = getReportMonthDate();
     document.getElementById("reportMonthLabel").textContent = m.toLocaleDateString(undefined, {month:"long", year:"numeric"});
 
-    var tallies = tallyForMonth();
+    var tallies = tallyGoalsForMonth(m);
     var gS = tallies.goalStats, sS = tallies.subStats;
-
     document.getElementById("reportSummary").innerHTML =
       stat(gS.total, "Goals due", "") +
       stat(gS.onTime, "Goals on time", "done") +
       stat(sS.total, "Subtasks due", "") +
       stat(sS.onTime, "Subtasks on time", "done");
-
     document.getElementById("reportGoalsChart").innerHTML =
       (gS.total > 0 ? buildDonut(gS) + donutLegend(gS) : '<div class="upcoming-empty">No goals had a deadline this month.</div>');
     document.getElementById("reportSubtasksChart").innerHTML =
       (sS.total > 0 ? buildDonut(sS) + donutLegend(sS) : '<div class="upcoming-empty">No subtasks had a deadline this month.</div>');
+
+    var expected = 0, completed = 0;
+    (state.routines||[]).forEach(function(r){
+      expected += countExpectedPeriods(r, m);
+      completed += countCompletedInMonth(r, m);
+    });
+    document.getElementById("reportRoutinesSummary").innerHTML =
+      stat(expected, "Expected check-ins", "") +
+      stat(completed, "Completed", "done") +
+      stat(Math.max(0, expected-completed), "Missed", "overdue");
+
+    var fs = financeTotalsForMonth(m);
+    document.getElementById("reportFinanceSummary").innerHTML =
+      stat(formatMoney(fs.received), "Received", "done") +
+      stat(formatMoney(fs.spent), "Spent", "overdue") +
+      stat(formatMoney(fs.received - fs.spent), "Net", "");
   }
 
   // ---------- Periodic re-check for deadline alerts ----------
@@ -1678,12 +2423,15 @@
     checkForNewUrgentAlerts();
     // Refresh pill states in the open card without collapsing it
     renderGoalList();
+    if(currentPageId === "page-home") renderHome();
+    if(currentPageId === "page-routines") renderRoutines();
   }, 60000);
 
   // ---------- Init ----------
   render();
   initGoogleDrive();
   initSubtaskDrag();
+  showPage("page-home");
 
   if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(function(e){
