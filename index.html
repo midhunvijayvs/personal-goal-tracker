@@ -178,6 +178,7 @@
   .pill.overdue{background:var(--red-dim);color:var(--red);}
   .pill.urgent{background:var(--amber-dim);color:var(--amber);}
   .pill.ok{background:var(--teal-dim);color:var(--teal);}
+  .pill.muted{background:var(--panel-light);color:var(--text-dim);}
 
   /* Controls row */
   .controls{
@@ -468,6 +469,8 @@
     width:100%;
     max-width:420px;
     padding:22px;
+    max-height:calc(100vh - 40px);
+    overflow-y:auto;
   }
   .modal h2{
     font-family:'Fraunces',serif;
@@ -482,7 +485,7 @@
     color:var(--text-dim);
     margin-bottom:5px;
   }
-  .field input[type=text], .field input[type=date], .field select, .field textarea{
+  .field input[type=text], .field input[type=date], .field input[type=number], .field select, .field textarea{
     width:100%;
     background:var(--panel-light);
     border:1px solid var(--border);
@@ -512,6 +515,31 @@
     font-size:13.5px;
   }
   .settings-row:first-child{border-top:none;}
+  .settings-section{
+    font-size:11.5px;
+    font-weight:600;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    padding:16px 0 4px;
+    border-top:1px solid var(--border);
+  }
+  .field-hint{font-size:11.5px;color:var(--text-faint);margin-top:4px;}
+  /* Monthly report: per-routine and per-category breakdowns */
+  .routine-report{margin-bottom:14px;}
+  .routine-report h3{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .routine-report .rr-freq{font-weight:400;color:var(--text-faint);}
+  .rr-counts{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--text-dim);margin-bottom:8px;}
+  .rr-counts b{font-family:'Fraunces',serif;font-size:15px;margin-right:3px;}
+  .rr-plot{width:100%;height:auto;display:block;}
+  .rr-legend{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:11.5px;color:var(--text-dim);margin-bottom:14px;}
+  .rr-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px;}
+  .cat-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .cat-table th{text-align:right;font-weight:500;color:var(--text-dim);font-size:11.5px;padding:0 0 8px;}
+  .cat-table th:first-child, .cat-table td:first-child{text-align:left;}
+  .cat-table td{text-align:right;padding:8px 0 8px 8px;border-top:1px solid var(--border);white-space:nowrap;}
+  .cat-table td:first-child{white-space:normal;padding-left:0;}
+  .cat-table tr.total td{font-weight:600;}
   .toggle{
     width:38px;height:22px;
     background:var(--panel-light);
@@ -707,9 +735,14 @@
 
   <h3 style="margin:26px 0 10px;color:var(--text-dim);font-size:13px;">Routines</h3>
   <div class="dashboard" id="reportRoutinesSummary"></div>
+  <div id="reportRoutinesDetail"></div>
 
   <h3 style="margin:26px 0 10px;color:var(--text-dim);font-size:13px;">Financials</h3>
   <div class="dashboard" id="reportFinanceSummary"></div>
+  <div class="upcoming">
+    <h3>By category</h3>
+    <div id="reportFinanceCategories"></div>
+  </div>
 </div>
 
 <!-- Goal Modal -->
@@ -772,14 +805,21 @@
       <label>Routine name</label>
       <input type="text" id="routineTitleInput" placeholder="e.g. Take multivitamin">
     </div>
-    <div class="field">
-      <label>Frequency</label>
-      <select id="routineFrequencyInput">
-        <option value="daily">Daily</option>
-        <option value="weekly">Weekly</option>
-        <option value="monthly">Monthly</option>
-      </select>
+    <div class="field-row">
+      <div class="field">
+        <label>Repeats</label>
+        <select id="routineFrequencyInput">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Frequency</label>
+        <input type="number" id="routineIntervalInput" min="1" max="365" step="1" value="1">
+      </div>
     </div>
+    <div class="field-hint" id="routineIntervalHint" style="margin:-6px 0 13px;"></div>
     <div class="field checkbox-row">
       <input type="checkbox" id="routineHasEndInput">
       <label for="routineHasEndInput">Does it have an end date?</label>
@@ -822,29 +862,13 @@
         <select id="txnModeInput">
           <option>UPI</option>
           <option>Cash</option>
+          <option>Credit Card</option>
           <option>Other Bank transfer</option>
         </select>
       </div>
       <div class="field">
         <label>Category</label>
-        <select id="txnCategoryInput">
-          <option>Salary</option>
-          <option>Business income</option>
-          <option>Food</option>
-          <option>Travel</option>
-          <option>Rent</option>
-          <option>Electricity</option>
-          <option>Internet</option>
-          <option>Phone Recharge</option>
-          <option>School/College Fee</option>
-          <option>Medicine</option>
-          <option>Apparels</option>
-          <option>Cosmetics</option>
-          <option>Entertainment</option>
-          <option>Online Subscription</option>
-          <option>Service charges</option>
-          <option>Other</option>
-        </select>
+        <select id="txnCategoryInput"><!-- filled from the category list in Settings --></select>
       </div>
     </div>
     <div class="field">
@@ -879,6 +903,25 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" id="balancesCloseBtn">Close</button>
       <button class="btn btn-primary" id="addBalanceBtn">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transaction Categories Modal -->
+<div class="overlay" id="categoriesOverlay" style="z-index:60;">
+  <div class="modal">
+    <h2>Transaction categories</h2>
+    <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px;">
+      These appear in the Category list when you add a transaction. Deleting a category only removes it from that list; transactions already saved under it keep it and still show in reports.
+    </div>
+    <div id="categoriesList"></div>
+    <div class="field" style="margin-top:14px;">
+      <label>New category</label>
+      <input type="text" id="newCategoryInput" placeholder="e.g. Fuel">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="categoriesCloseBtn">Close</button>
+      <button class="btn btn-primary" id="addCategoryBtn">Add</button>
     </div>
   </div>
 </div>
@@ -933,7 +976,13 @@
       <span id="notifPermLabel">Phone/browser notifications: not enabled</span>
       <button class="btn btn-sm btn-ghost" id="enableNotifBtn">Enable</button>
     </div>
-    <div class="settings-row">
+    <div class="settings-section">Finances</div>
+    <div class="settings-row" style="border-top:none;">
+      <span>Transaction categories</span>
+      <button class="btn btn-sm btn-ghost" id="editCategoriesBtn">Edit</button>
+    </div>
+    <div class="settings-section"></div>
+    <div class="settings-row" style="border-top:none;">
       <span>About this app</span>
       <button class="btn btn-sm btn-ghost" id="aboutBtn">About</button>
     </div>
@@ -953,6 +1002,10 @@
 
   var STORAGE_KEY = "personal_assistant_data_v1";
   var LEGACY_STORAGE_KEY = "trajectory_data_v1"; // pre-rename key, kept for one-time migration
+  // Starting category list; the user can add/delete categories from Settings.
+  var DEFAULT_CATEGORIES = ["Salary", "Business income", "Food", "Travel", "Rent", "Electricity", "Internet",
+    "Phone Recharge", "School/College Fee", "Medicine", "Apparels", "Cosmetics", "Entertainment",
+    "Online Subscription", "Service charges", "Other"];
   var state = loadState();
   var openGoalId = null; // which goal card is expanded
   var editingGoalId = null; // null = creating new
@@ -976,13 +1029,14 @@
         if(!parsed.finance) parsed.finance = {};
         if(!parsed.finance.initialBalances) parsed.finance.initialBalances = [];
         if(!parsed.finance.transactions) parsed.finance.transactions = [];
+        if(!Array.isArray(parsed.finance.categories)) parsed.finance.categories = DEFAULT_CATEGORIES.slice();
         return parsed;
       }
     }catch(e){ console.error("Could not load saved data", e); }
     return {
       goals: [],
       routines: [],
-      finance: { initialBalances: [], transactions: [] },
+      finance: { initialBalances: [], transactions: [], categories: DEFAULT_CATEGORIES.slice() },
       settings: { soundEnabled: true, warnHours: 48, userName: "" }
     };
   }
@@ -1145,6 +1199,7 @@
             if(!remote.finance) remote.finance = {};
             if(!remote.finance.initialBalances) remote.finance.initialBalances = [];
             if(!remote.finance.transactions) remote.finance.transactions = [];
+            if(!Array.isArray(remote.finance.categories)) remote.finance.categories = DEFAULT_CATEGORIES.slice();
             isApplyingRemoteState = true;
             state = remote;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -1780,7 +1835,7 @@
   document.getElementById("clearDataBtn").onclick = function(){
     if(confirm("This will permanently delete all goals, routines, and financial data. Continue?")){
       state = {
-        goals: [], routines: [], finance: { initialBalances: [], transactions: [] },
+        goals: [], routines: [], finance: { initialBalances: [], transactions: [], categories: (state.finance.categories || DEFAULT_CATEGORIES).slice() },
         settings: { soundEnabled: true, warnHours: 48, userName: state.settings.userName || "" }
       };
       alertedIds = {};
@@ -1868,9 +1923,30 @@
     else if(id === "page-report"){ reportMonthOffset = 0; renderReport(); }
   }
 
+  // Sub-pages get a browser history entry so the phone's back button returns to
+  // Home instead of closing the app. Only one level deep: sub-page -> sub-page
+  // replaces the entry, so back always lands on Home.
+  function navigateTo(id){
+    if(id === currentPageId) return;
+    if(id === "page-home"){
+      if(history.state && history.state.page && history.state.page !== "page-home"){ history.back(); return; }
+      showPage(id);
+      return;
+    }
+    if(currentPageId === "page-home") history.pushState({ page: id }, "");
+    else history.replaceState({ page: id }, "");
+    showPage(id);
+  }
+
+  window.addEventListener("popstate", function(e){
+    // Close any open popup too, so back never leaves a modal over the wrong page.
+    document.querySelectorAll(".overlay.show").forEach(function(o){ o.classList.remove("show"); });
+    showPage((e.state && e.state.page) || "page-home");
+  });
+
   document.body.addEventListener("click", function(e){
     var btn = e.target.closest("[data-nav]");
-    if(btn) showPage(btn.getAttribute("data-nav"));
+    if(btn) navigateTo(btn.getAttribute("data-nav"));
   });
 
   function goalCompletedAt(g){
@@ -1975,29 +2051,99 @@
     return r.lastCompletedPeriod === currentPeriodKey(r.frequency);
   }
 
-  function countExpectedPeriods(routine, monthDate){
-    var year = monthDate.getFullYear(), month = monthDate.getMonth();
-    var monthStart = new Date(year, month, 1);
-    var monthEnd = new Date(year, month+1, 0, 23, 59, 59);
-    var created = new Date(routine.createdAt || 0);
-    var end = (routine.hasEndDate && routine.endDate) ? new Date(routine.endDate+"T23:59:59") : null;
-    var rangeStart = created > monthStart ? created : monthStart;
-    var rangeEnd = (end && end < monthEnd) ? end : monthEnd;
-    if(rangeStart > rangeEnd) return 0;
-    if(routine.frequency === "monthly") return 1;
-    var days = Math.floor((rangeEnd - rangeStart)/86400000) + 1;
-    if(routine.frequency === "daily") return days;
-    if(routine.frequency === "weekly") return Math.max(1, Math.round(days/7));
-    return 0;
+  // "Frequency" number in the editor: 1 = every period, 2 = every other period, ...
+  // Older routines have no interval stored and are treated as 1.
+  function routineInterval(r){
+    var n = parseInt(r.interval, 10);
+    return n >= 1 ? n : 1;
   }
 
-  function countCompletedInMonth(routine, monthDate){
-    var year = monthDate.getFullYear(), month = monthDate.getMonth();
-    return (routine.completions||[]).filter(function(ts){
-      var d = new Date(ts);
-      return d.getFullYear() === year && d.getMonth() === month;
-    }).length;
+  function dayIndex(d){ return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000); }
+  function weekSunday(d){ var s = new Date(d.getFullYear(), d.getMonth(), d.getDate()); s.setDate(s.getDate() - s.getDay()); return s; }
+
+  // Whole periods (days / Sunday-weeks / months) from date a to date b.
+  function periodsBetween(freq, a, b){
+    if(freq === "daily") return dayIndex(b) - dayIndex(a);
+    if(freq === "weekly") return Math.round((dayIndex(weekSunday(b)) - dayIndex(weekSunday(a))) / 7);
+    return (b.getFullYear() - a.getFullYear())*12 + (b.getMonth() - a.getMonth());
   }
+
+  function periodStartDate(freq, d){
+    if(freq === "daily") return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    if(freq === "weekly") return weekSunday(d);
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  }
+
+  // Is the period containing `date` one this routine is due in? Counted from the
+  // period the routine was created in, and not after its end date.
+  function isScheduledPeriod(r, date){
+    var p = periodsBetween(r.frequency, new Date(r.createdAt || 0), date);
+    if(p < 0 || p % routineInterval(r) !== 0) return false;
+    if(r.hasEndDate && r.endDate && periodStartDate(r.frequency, date) > new Date(r.endDate+"T23:59:59")) return false;
+    return true;
+  }
+
+  function completedInPeriod(r, date){
+    return (r.completions||[]).some(function(ts){ return periodsBetween(r.frequency, new Date(ts), date) === 0; });
+  }
+
+  function routineDueNow(r){
+    return !routineHasEnded(r) && isScheduledPeriod(r, new Date());
+  }
+
+  function nextScheduledDate(r){
+    var d = periodStartDate(r.frequency, new Date());
+    for(var i=1;i<=routineInterval(r);i++){
+      if(r.frequency === "daily") d.setDate(d.getDate()+1);
+      else if(r.frequency === "weekly") d.setDate(d.getDate()+7);
+      else d.setMonth(d.getMonth()+1);
+      if(isScheduledPeriod(r, d)) return d;
+    }
+    return null;
+  }
+
+  function routineFreqLabel(r){
+    var n = routineInterval(r);
+    var unit = r.frequency === "daily" ? "day" : (r.frequency === "weekly" ? "week" : "month");
+    if(n === 1) return r.frequency.charAt(0).toUpperCase() + r.frequency.slice(1);
+    if(n === 2) return "Every other " + unit;
+    return "Every " + n + " " + unit + "s";
+  }
+
+  // Status of one period for the monthly report:
+  // "achieved" | "missed" | "upcoming" | "none" (not scheduled).
+  function routinePeriodStatus(r, periodDate){
+    if(!isScheduledPeriod(r, periodDate)) return "none";
+    if(completedInPeriod(r, periodDate)) return "achieved";
+    if(periodsBetween(r.frequency, new Date(), periodDate) >= 0) return "upcoming"; // current or future period
+    return "missed";
+  }
+
+  // The periods of a month that belong to it: every day (daily), every week whose
+  // Sunday falls in the month (weekly), or the month itself (monthly).
+  function routinePeriodsInMonth(r, monthDate){
+    var y = monthDate.getFullYear(), m = monthDate.getMonth();
+    var last = new Date(y, m+1, 0).getDate();
+    var out = [];
+    if(r.frequency === "daily"){
+      for(var d=1; d<=last; d++) out.push({ label: String(d), date: new Date(y, m, d) });
+    } else if(r.frequency === "weekly"){
+      var first = new Date(y, m, 1);
+      var sunday = new Date(y, m, 1 + (7 - first.getDay()) % 7);
+      var w = 1;
+      while(sunday.getMonth() === m){
+        var sat = new Date(sunday); sat.setDate(sat.getDate()+6);
+        out.push({ label: "Week " + w, date: new Date(sunday), range: formatDateShort(toDateStr(sunday)) + " – " + formatDateShort(toDateStr(sat)) });
+        sunday.setDate(sunday.getDate()+7); w++;
+      }
+    } else {
+      out.push({ label: monthDate.toLocaleDateString(undefined, {month:"long"}), date: new Date(y, m, 1) });
+    }
+    out.forEach(function(p){ p.status = routinePeriodStatus(r, p.date); });
+    return out;
+  }
+
+  function toDateStr(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
 
   function findRoutine(id){
     return (state.routines||[]).find(function(r){ return r.id === id; });
@@ -2008,12 +2154,12 @@
     var countEl = document.getElementById("routineCount");
     countEl.textContent = list.length + (list.length === 1 ? " routine" : " routines");
 
-    var active = list.filter(function(r){ return !routineHasEnded(r); });
-    var doneCount = active.filter(routineDoneForPeriod).length;
+    var due = list.filter(routineDueNow);
+    var doneCount = due.filter(routineDoneForPeriod).length;
     document.getElementById("routineSummary").innerHTML =
       stat(list.length, "Total routines", "") +
       stat(doneCount, "Done this period", "done") +
-      stat(active.length - doneCount, "Pending", "urgent");
+      stat(due.length - doneCount, "Pending", "urgent");
 
     var el = document.getElementById("routineList");
     if(list.length === 0){
@@ -2026,16 +2172,20 @@
   function renderRoutineCard(r){
     var ended = routineHasEnded(r);
     var done = routineDoneForPeriod(r);
+    var due = routineDueNow(r);
     var periodLabel = r.frequency === "daily" ? "today" : (r.frequency === "weekly" ? "this week" : "this month");
-    var statusPill = ended ? '<span class="pill ok">Ended</span>' : (done ? '<span class="pill ok">Done '+periodLabel+'</span>' : '<span class="pill urgent">Pending '+periodLabel+'</span>');
-    var doneBtn = (!ended && !done) ? '<button class="btn btn-sm btn-primary" data-action="routine-done" data-routine="'+r.id+'">Mark done</button>' : "";
+    var next = (!ended && !due) ? nextScheduledDate(r) : null;
+    var statusPill = ended ? '<span class="pill ok">Ended</span>' :
+      (!due ? '<span class="pill muted">Not due '+periodLabel+(next ? ' · next '+formatDateShort(toDateStr(next)) : '')+'</span>' :
+      (done ? '<span class="pill ok">Done '+periodLabel+'</span>' : '<span class="pill urgent">Pending '+periodLabel+'</span>'));
+    var doneBtn = (due && !done) ? '<button class="btn btn-sm btn-primary" data-action="routine-done" data-routine="'+r.id+'">Mark done</button>' : "";
 
     return '<div class="goal pri-low" data-routine-id="'+r.id+'">' +
       '<div class="goal-head" style="cursor:default;align-items:center;">' +
         '<div class="goal-title-wrap">' +
           '<p class="goal-title">'+escapeHtml(r.title)+'</p>' +
           '<div class="goal-head-controls">' +
-            '<div class="goal-meta"><span style="text-transform:capitalize;">'+r.frequency+'</span>'+statusPill+
+            '<div class="goal-meta"><span>'+routineFreqLabel(r)+'</span>'+statusPill+
               (r.hasEndDate && r.endDate ? '<span>Ends '+formatDeadline(r.endDate)+'</span>' : '') +
             '</div>' +
             doneBtn +
@@ -2089,12 +2239,14 @@
     var hasEndInput = document.getElementById("routineHasEndInput");
     var endDateInput = document.getElementById("routineEndDateInput");
     var endDateField = document.getElementById("routineEndDateField");
+    var intervalInput = document.getElementById("routineIntervalInput");
 
     if(routineId){
       var r = findRoutine(routineId);
       titleEl.textContent = "Edit routine";
       titleInput.value = r.title;
       freqInput.value = r.frequency;
+      intervalInput.value = routineInterval(r);
       hasEndInput.checked = !!r.hasEndDate;
       endDateInput.value = r.endDate || "";
       endDateField.style.display = r.hasEndDate ? "" : "none";
@@ -2102,13 +2254,25 @@
       titleEl.textContent = "New routine";
       titleInput.value = "";
       freqInput.value = "daily";
+      intervalInput.value = 1;
       hasEndInput.checked = false;
       endDateInput.value = "";
       endDateField.style.display = "none";
     }
+    updateRoutineIntervalHint();
     routineOverlay.classList.add("show");
     titleInput.focus();
   }
+
+  function updateRoutineIntervalHint(){
+    var n = parseInt(document.getElementById("routineIntervalInput").value, 10);
+    if(!(n >= 1)) n = 1;
+    var freq = document.getElementById("routineFrequencyInput").value;
+    document.getElementById("routineIntervalHint").textContent =
+      "Repeats: " + routineFreqLabel({ frequency: freq, interval: n }).toLowerCase() + ".";
+  }
+  document.getElementById("routineIntervalInput").oninput = updateRoutineIntervalHint;
+  document.getElementById("routineFrequencyInput").onchange = updateRoutineIntervalHint;
 
   document.getElementById("routineSaveBtn").onclick = function(){
     var title = document.getElementById("routineTitleInput").value.trim();
@@ -2116,13 +2280,15 @@
     var frequency = document.getElementById("routineFrequencyInput").value;
     var hasEndDate = document.getElementById("routineHasEndInput").checked;
     var endDate = document.getElementById("routineEndDateInput").value;
+    var interval = parseInt(document.getElementById("routineIntervalInput").value, 10);
+    if(!(interval >= 1)){ alert("Frequency must be a whole number, 1 or more."); return; }
 
     if(editingRoutineId){
       var r = findRoutine(editingRoutineId);
-      r.title = title; r.frequency = frequency; r.hasEndDate = hasEndDate; r.endDate = hasEndDate ? endDate : "";
+      r.title = title; r.frequency = frequency; r.interval = interval; r.hasEndDate = hasEndDate; r.endDate = hasEndDate ? endDate : "";
     } else {
       state.routines.push({
-        id: uid(), title: title, frequency: frequency, hasEndDate: hasEndDate, endDate: hasEndDate ? endDate : "",
+        id: uid(), title: title, frequency: frequency, interval: interval, hasEndDate: hasEndDate, endDate: hasEndDate ? endDate : "",
         lastCompletedPeriod: null, completions: [], createdAt: Date.now()
       });
     }
@@ -2244,6 +2410,31 @@
     return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
   }
 
+  function txnCategories(){ return state.finance.categories || DEFAULT_CATEGORIES; }
+
+  // Fill the Category dropdown from the user's list. A transaction saved under a
+  // category that has since been deleted still shows it, so editing keeps it.
+  function fillCategorySelect(selected){
+    var cats = txnCategories().slice();
+    if(selected && cats.indexOf(selected) === -1) cats.push(selected);
+    var el = document.getElementById("txnCategoryInput");
+    el.innerHTML = cats.map(function(c){
+      var deleted = txnCategories().indexOf(c) === -1;
+      return '<option value="'+escapeHtml(c).replace(/"/g, "&quot;")+'">'+escapeHtml(c)+(deleted ? ' (deleted)' : '')+'</option>';
+    }).join("");
+    if(selected) el.value = selected;
+  }
+
+  function fillModeSelect(selected){
+    var el = document.getElementById("txnModeInput");
+    Array.prototype.slice.call(el.querySelectorAll("option[data-extra]")).forEach(function(o){ o.remove(); });
+    var known = Array.prototype.map.call(el.options, function(o){ return o.value; });
+    if(selected && known.indexOf(selected) === -1){
+      var o = document.createElement("option"); o.textContent = selected; o.setAttribute("data-extra", "1"); el.appendChild(o);
+    }
+    el.value = selected;
+  }
+
   function openTxnEditor(txnId){
     editingTxnId = txnId;
     var titleEl = document.getElementById("txnModalTitle");
@@ -2258,16 +2449,16 @@
       titleEl.textContent = "Edit transaction";
       descInput.value = t.description;
       amountInput.value = t.amount;
-      modeInput.value = t.mode;
-      categoryInput.value = t.category;
+      fillModeSelect(t.mode);
+      fillCategorySelect(t.category);
       dateInput.value = t.date;
       document.querySelector('input[name="txnDirection"][value="'+t.direction+'"]').checked = true;
     } else {
       titleEl.textContent = "New transaction";
       descInput.value = "";
       amountInput.value = "";
-      modeInput.value = "UPI";
-      categoryInput.value = "Food";
+      fillModeSelect("UPI");
+      fillCategorySelect(txnCategories().indexOf("Food") !== -1 ? "Food" : txnCategories()[0]);
       dateInput.value = todayStr();
       document.querySelector('input[name="txnDirection"][value="out"]').checked = true;
     }
@@ -2345,6 +2536,52 @@
     renderBalancesList();
   };
 
+  // ---------- Transaction categories (Settings > Finances) ----------
+  var categoriesOverlay = document.getElementById("categoriesOverlay");
+  document.getElementById("editCategoriesBtn").onclick = function(){
+    renderCategoriesList();
+    categoriesOverlay.classList.add("show");
+  };
+  document.getElementById("categoriesCloseBtn").onclick = function(){ categoriesOverlay.classList.remove("show"); };
+  categoriesOverlay.onclick = function(e){ if(e.target === categoriesOverlay) categoriesOverlay.classList.remove("show"); };
+
+  function renderCategoriesList(){
+    var el = document.getElementById("categoriesList");
+    var list = txnCategories();
+    if(list.length === 0){
+      el.innerHTML = '<div class="upcoming-empty">No categories. Add one below.</div>';
+      return;
+    }
+    el.innerHTML = list.map(function(c, i){
+      return '<div class="mini-list-row"><span>'+escapeHtml(c)+'</span>' +
+        '<button class="btn-icon" data-cat-index="'+i+'" title="Delete">🗑</button></div>';
+    }).join("");
+    el.querySelectorAll("[data-cat-index]").forEach(function(btn){
+      btn.onclick = function(){
+        var name = list[parseInt(btn.getAttribute("data-cat-index"), 10)];
+        var used = (state.finance.transactions||[]).filter(function(t){ return t.category === name; }).length;
+        var msg = 'Delete the category "' + name + '"?' +
+          (used ? "\n\n" + used + " saved transaction" + (used === 1 ? " uses" : "s use") + " it. They will keep it and still count in reports." : "");
+        if(!confirm(msg)) return;
+        state.finance.categories = list.filter(function(x){ return x !== name; });
+        saveState();
+        renderCategoriesList();
+      };
+    });
+  }
+
+  document.getElementById("addCategoryBtn").onclick = function(){
+    var input = document.getElementById("newCategoryInput");
+    var name = input.value.trim();
+    if(!name){ alert("Type a category name."); return; }
+    var exists = txnCategories().some(function(c){ return c.toLowerCase() === name.toLowerCase(); });
+    if(exists){ alert('"' + name + '" is already in the list.'); return; }
+    state.finance.categories = txnCategories().concat([name]);
+    input.value = "";
+    saveState();
+    renderCategoriesList();
+  };
+
   // ---------- About ----------
   var aboutOverlay = document.getElementById("aboutOverlay");
   document.getElementById("aboutBtn").onclick = function(){ aboutOverlay.classList.add("show"); };
@@ -2356,7 +2593,7 @@
     renderHeading();
     var totalGoals = state.goals.length;
     var doneGoals = state.goals.filter(goalIsDone).length;
-    var activeRoutines = (state.routines||[]).filter(function(r){ return !routineHasEnded(r); });
+    var activeRoutines = (state.routines||[]).filter(routineDueNow);
     var doneRoutines = activeRoutines.filter(routineDoneForPeriod).length;
     var bal = financeBalance();
 
@@ -2399,21 +2636,129 @@
     document.getElementById("reportSubtasksChart").innerHTML =
       (sS.total > 0 ? buildDonut(sS) + donutLegend(sS) : '<div class="upcoming-empty">No subtasks had a deadline this month.</div>');
 
-    var expected = 0, completed = 0;
-    (state.routines||[]).forEach(function(r){
-      expected += countExpectedPeriods(r, m);
-      completed += countCompletedInMonth(r, m);
-    });
+    // Missed = scheduled periods that are already over and weren't done.
+    // Today / this week / this month and later count as upcoming, not missed.
+    var totals = { achieved:0, missed:0, upcoming:0 };
+    var detailHtml = (state.routines||[]).map(function(r){
+      var periods = routinePeriodsInMonth(r, m);
+      var c = { achieved:0, missed:0, upcoming:0, none:0 };
+      periods.forEach(function(p){ c[p.status]++; });
+      totals.achieved += c.achieved; totals.missed += c.missed; totals.upcoming += c.upcoming;
+      // Leave out routines that didn't exist yet, or had already ended, in this month.
+      var created = new Date(r.createdAt || 0);
+      var endD = (r.hasEndDate && r.endDate) ? new Date(r.endDate+"T23:59:59") : null;
+      var alive = periods.some(function(p){
+        return periodsBetween(r.frequency, created, p.date) >= 0 && !(endD && periodStartDate(r.frequency, p.date) > endD);
+      });
+      if(!alive) return "";
+      return renderRoutineReport(r, periods, c);
+    }).join("");
     document.getElementById("reportRoutinesSummary").innerHTML =
-      stat(expected, "Expected check-ins", "") +
-      stat(completed, "Completed", "done") +
-      stat(Math.max(0, expected-completed), "Missed", "overdue");
+      stat(totals.achieved + totals.missed + totals.upcoming, "Scheduled", "") +
+      stat(totals.achieved, "Achieved", "done") +
+      stat(totals.missed, "Missed", "overdue") +
+      stat(totals.upcoming, "Upcoming", "");
+    document.getElementById("reportRoutinesDetail").innerHTML = detailHtml ||
+      '<div class="upcoming"><div class="upcoming-empty">No routines were active this month.</div></div>';
 
     var fs = financeTotalsForMonth(m);
     document.getElementById("reportFinanceSummary").innerHTML =
       stat(formatMoney(fs.received), "Received", "done") +
       stat(formatMoney(fs.spent), "Spent", "overdue") +
       stat(formatMoney(fs.received - fs.spent), "Net", "");
+    document.getElementById("reportFinanceCategories").innerHTML = renderCategoryReport(m);
+  }
+
+  var RR_COLORS = { achieved:"#3FB950", missed:"#F2555A", none:"#3A4656", upcoming:"#8A97A6" };
+  var RR_LABELS = { achieved:"Achieved", missed:"Missed", none:"Not scheduled", upcoming:"Upcoming" };
+
+  function renderRoutineReport(r, periods, c){
+    var head = '<h3><span>'+escapeHtml(r.title)+'</span><span class="rr-freq">'+routineFreqLabel(r)+'</span></h3>';
+    var counts = '<div class="rr-counts">' +
+      '<span><b style="color:'+RR_COLORS.achieved+'">'+c.achieved+'</b>achieved</span>' +
+      '<span><b style="color:'+RR_COLORS.missed+'">'+c.missed+'</b>missed</span>' +
+      '<span><b style="color:var(--text-dim)">'+c.upcoming+'</b>upcoming</span>' +
+    '</div>';
+    var body;
+    if(r.frequency === "monthly"){
+      var st = periods[0].status;
+      var text = st === "achieved" ? "Achieved this month" : st === "missed" ? "Missed this month" :
+        st === "upcoming" ? "Not done yet this month" : "Not scheduled this month";
+      body = '<div style="font-size:14px;font-weight:600;color:'+(st === "none" ? "var(--text-faint)" : RR_COLORS[st])+';">'+text+'</div>';
+    } else {
+      body = buildRoutinePlot(periods, r.frequency === "daily");
+    }
+    return '<div class="upcoming routine-report">' + head + counts + body + '</div>';
+  }
+
+  // Dot plot: x = days (or weeks) of the month, y = status row.
+  function buildRoutinePlot(periods, isDaily){
+    var rows = ["achieved", "missed", "upcoming", "none"];
+    // Daily plots squeeze ~31 columns into a phone-width box, so they use a
+    // larger font in viewBox units to stay readable once scaled down.
+    var fs = isDaily ? 22 : 14;
+    var left = isDaily ? 160 : 120, right = 12, top = 10, rowH = isDaily ? 36 : 30, bottom = isDaily ? 40 : 30;
+    var colW = isDaily ? 16 : 70;
+    var width = left + periods.length*colW + right;
+    var height = top + rows.length*rowH + bottom;
+    var svg = '<svg class="rr-plot" viewBox="0 0 '+width+' '+height+'" style="max-width:'+(isDaily ? 640 : Math.max(320, width))+'px;" role="img">';
+    rows.forEach(function(row, i){
+      var y = top + i*rowH + rowH/2;
+      svg += '<line x1="'+left+'" y1="'+y+'" x2="'+(width-right)+'" y2="'+y+'" stroke="#2A3645" stroke-width="1" />';
+      svg += '<text x="'+(left-10)+'" y="'+(y+5)+'" text-anchor="end" fill="#8A97A6" font-size="'+fs+'" font-family="Inter, sans-serif">'+RR_LABELS[row]+'</text>';
+    });
+    var dayN = periods.length;
+    periods.forEach(function(p, i){
+      var x = left + i*colW + colW/2;
+      var y = top + rows.indexOf(p.status)*rowH + rowH/2;
+      var rad = isDaily ? 7 : 9;
+      var title = '<title>'+escapeHtml(p.label + (p.range ? " ("+p.range+")" : "") + ": " + RR_LABELS[p.status])+'</title>';
+      if(p.status === "upcoming"){
+        svg += '<circle cx="'+x+'" cy="'+y+'" r="'+(rad-1)+'" fill="none" stroke="'+RR_COLORS.upcoming+'" stroke-width="2">'+title+'</circle>';
+      } else {
+        svg += '<circle cx="'+x+'" cy="'+y+'" r="'+rad+'" fill="'+RR_COLORS[p.status]+'">'+title+'</circle>';
+      }
+      var d = i+1;
+      if(!isDaily || d === 1 || d === dayN || (d % 5 === 0 && d <= dayN - 2)){
+        svg += '<text x="'+x+'" y="'+(height-10)+'" text-anchor="middle" fill="#5A6672" font-size="'+(fs-1)+'" font-family="Inter, sans-serif">'+escapeHtml(p.label)+'</text>';
+      }
+    });
+    svg += '</svg>';
+    var legend = '<div class="rr-legend" style="margin:8px 0 0;">' + rows.map(function(row){
+      var dot = row === "upcoming" ? 'border:2px solid '+RR_COLORS.upcoming+';width:7px;height:7px;' : 'background:'+RR_COLORS[row]+';';
+      return '<span><i style="'+dot+'"></i>'+RR_LABELS[row]+'</span>';
+    }).join("") + '</div>';
+    return svg + legend;
+  }
+
+  // Each category treated like an account: money in is +, money out is −.
+  function renderCategoryReport(monthDate){
+    var byCat = {}, order = [];
+    (state.finance.transactions||[]).forEach(function(t){
+      if(!isInMonth(t.date, monthDate)) return;
+      var c = t.category || "Uncategorised";
+      if(!byCat[c]){ byCat[c] = { inAmt:0, outAmt:0 }; order.push(c); }
+      if(t.direction === "in") byCat[c].inAmt += t.amount; else byCat[c].outAmt += t.amount;
+    });
+    if(order.length === 0) return '<div class="upcoming-empty">No transactions this month.</div>';
+    order.sort(function(a,b){
+      var na = byCat[a].inAmt - byCat[a].outAmt, nb = byCat[b].inAmt - byCat[b].outAmt;
+      return na - nb; // biggest spend first, biggest income last
+    });
+    var tIn = 0, tOut = 0;
+    var rows = order.map(function(c){
+      var v = byCat[c], net = v.inAmt - v.outAmt;
+      tIn += v.inAmt; tOut += v.outAmt;
+      var deleted = txnCategories().indexOf(c) === -1 ? ' <span style="color:var(--text-faint);font-size:11px;">(deleted)</span>' : '';
+      return '<tr><td>'+escapeHtml(c)+deleted+'</td>' +
+        '<td style="color:var(--teal);">'+(v.inAmt ? formatMoney(v.inAmt) : '–')+'</td>' +
+        '<td style="color:var(--red);">'+(v.outAmt ? formatMoney(-v.outAmt) : '–')+'</td>' +
+        '<td style="color:'+(net < 0 ? 'var(--red)' : (net > 0 ? 'var(--teal)' : 'var(--text-dim)'))+';">'+formatMoney(net)+'</td></tr>';
+    }).join("");
+    return '<table class="cat-table"><thead><tr><th>Category</th><th>In</th><th>Out</th><th>Balance</th></tr></thead><tbody>' +
+      rows +
+      '<tr class="total"><td>Total</td><td>'+formatMoney(tIn)+'</td><td>'+formatMoney(-tOut)+'</td><td>'+formatMoney(tIn - tOut)+'</td></tr>' +
+      '</tbody></table>';
   }
 
   // ---------- Periodic re-check for deadline alerts ----------
@@ -2431,6 +2776,7 @@
   render();
   initGoogleDrive();
   initSubtaskDrag();
+  history.replaceState({ page: "page-home" }, "");
   showPage("page-home");
 
   if("serviceWorker" in navigator){
