@@ -485,7 +485,7 @@
     color:var(--text-dim);
     margin-bottom:5px;
   }
-  .field input[type=text], .field input[type=date], .field input[type=number], .field select, .field textarea{
+  .field input[type=text], .field input[type=date], .field input[type=month], .field input[type=number], .field select, .field textarea{
     width:100%;
     background:var(--panel-light);
     border:1px solid var(--border);
@@ -577,6 +577,28 @@
     .goal-meta{flex-direction:column;align-items:flex-start;gap:4px;}
   }
 
+  /* PDF export: the report is built into #printReport and printed on its own
+     (the phone's print dialog offers "Save as PDF"). */
+  #printReport{display:none;}
+  @media print{
+    body > *:not(#printReport){display:none !important;}
+    #printReport{display:block !important;}
+    body{background:#fff !important;}
+  }
+  #printReport{color:#111;font-family:Inter, "Noto Sans Malayalam", sans-serif;font-size:11px;background:#fff;}
+  #printReport h1{font-family:'Fraunces',serif;font-size:20px;margin:0 0 2px;}
+  #printReport .pr-sub{color:#555;margin-bottom:12px;}
+  #printReport .pr-sum{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 14px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;}
+  #printReport .pr-sum b{display:block;font-size:14px;}
+  #printReport table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+  #printReport th{background:#f0f0f0;text-align:left;font-weight:600;}
+  #printReport th, #printReport td{border:1px solid #ccc;padding:3px 5px;vertical-align:top;}
+  #printReport td.num, #printReport th.num{text-align:right;white-space:nowrap;}
+  #printReport tr{page-break-inside:avoid;}
+  #printReport .in{color:#0a7a3e;} #printReport .out{color:#c0262d;}
+  #printReport h2{font-size:13px;margin:6px 0;}
+  .export-opt{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:14px;cursor:pointer;}
+  .export-sub{padding:2px 0 8px 26px;}
   @media (prefers-reduced-motion: reduce){
     *{transition:none !important;}
   }
@@ -696,6 +718,7 @@
     <div style="font-size:13px;color:var(--text-dim);" id="txnCount"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn btn-ghost btn-sm" id="manageBalancesBtn">Starting balances</button>
+      <button class="btn btn-ghost btn-sm" id="exportTxnBtn">⬇ Export PDF</button>
       <button class="btn btn-ghost btn-sm" data-nav="page-report">📊 Monthly report</button>
     </div>
   </div>
@@ -934,6 +957,33 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" id="importCancelBtn">Cancel</button>
       <button class="btn btn-primary" id="importConfirmBtn">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Transactions Modal -->
+<div class="overlay" id="exportOverlay">
+  <div class="modal">
+    <h2>Export transactions</h2>
+    <label class="export-opt"><input type="radio" name="exportMode" value="all" checked> All</label>
+    <label class="export-opt"><input type="radio" name="exportMode" value="dates"> Date range</label>
+    <div class="export-sub field-row" data-for="dates">
+      <div class="field"><label>From</label><input type="date" id="exportFromDate"></div>
+      <div class="field"><label>To</label><input type="date" id="exportToDate"></div>
+    </div>
+    <label class="export-opt"><input type="radio" name="exportMode" value="months"> Month range</label>
+    <div class="export-sub field-row" data-for="months">
+      <div class="field"><label>From month</label><input type="month" id="exportFromMonth"></div>
+      <div class="field"><label>To month</label><input type="month" id="exportToMonth"></div>
+    </div>
+    <label class="export-opt"><input type="radio" name="exportMode" value="category"> Category</label>
+    <div class="export-sub field" data-for="category">
+      <select id="exportCategory"></select>
+    </div>
+    <div class="field-hint" style="margin-top:6px;">Opens your phone's print screen. Choose <b>Save as PDF</b> as the printer to save the file.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="exportCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="exportGoBtn">Export PDF</button>
     </div>
   </div>
 </div>
@@ -2760,6 +2810,120 @@
     alert(count + " transaction" + (count === 1 ? "" : "s") + " imported.");
   };
 
+  // ---------- Export transactions as PDF (Financials page) ----------
+  // Builds a printable report into #printReport and opens the print dialog;
+  // "Save as PDF" there produces the file. Printing (rather than a JS PDF
+  // library) keeps Malayalam and other scripts rendering correctly.
+  var exportOverlay = document.getElementById("exportOverlay");
+
+  function exportMode(){ return document.querySelector('input[name="exportMode"]:checked').value; }
+  function updateExportFields(){
+    var mode = exportMode();
+    exportOverlay.querySelectorAll(".export-sub").forEach(function(el){
+      el.style.display = el.getAttribute("data-for") === mode ? "" : "none";
+    });
+  }
+  exportOverlay.querySelectorAll('input[name="exportMode"]').forEach(function(r){ r.onchange = updateExportFields; });
+
+  document.getElementById("exportTxnBtn").onclick = function(){
+    // Categories from the list plus any found on saved transactions (e.g. deleted ones).
+    var cats = txnCategories().slice();
+    (state.finance.transactions||[]).forEach(function(t){ if(t.category && cats.indexOf(t.category) === -1) cats.push(t.category); });
+    var sel = document.getElementById("exportCategory");
+    var prev = sel.value;
+    sel.innerHTML = cats.map(function(c){ return '<option value="'+escapeHtml(c).replace(/"/g, "&quot;")+'">'+escapeHtml(c)+'</option>'; }).join("");
+    if(prev && cats.indexOf(prev) !== -1) sel.value = prev;
+    var today = todayStr(), month = today.slice(0, 7);
+    if(!document.getElementById("exportFromDate").value) document.getElementById("exportFromDate").value = month + "-01";
+    if(!document.getElementById("exportToDate").value) document.getElementById("exportToDate").value = today;
+    if(!document.getElementById("exportFromMonth").value) document.getElementById("exportFromMonth").value = month;
+    if(!document.getElementById("exportToMonth").value) document.getElementById("exportToMonth").value = month;
+    updateExportFields();
+    exportOverlay.classList.add("show");
+  };
+  document.getElementById("exportCancelBtn").onclick = function(){ exportOverlay.classList.remove("show"); };
+  exportOverlay.onclick = function(e){ if(e.target === exportOverlay) exportOverlay.classList.remove("show"); };
+
+  function lastDayOfMonth(ym){
+    var y = parseInt(ym.slice(0,4), 10), m = parseInt(ym.slice(5,7), 10);
+    return ym + "-" + pad2(new Date(y, m, 0).getDate());
+  }
+
+  document.getElementById("exportGoBtn").onclick = function(){
+    var mode = exportMode(), from = null, to = null, cat = null, label;
+    if(mode === "dates"){
+      from = document.getElementById("exportFromDate").value; to = document.getElementById("exportToDate").value;
+      if(!from || !to){ alert("Pick both dates."); return; }
+      if(from > to){ var x = from; from = to; to = x; }
+      label = formatDateLong(from) + " to " + formatDateLong(to);
+    } else if(mode === "months"){
+      var fm = document.getElementById("exportFromMonth").value, tm = document.getElementById("exportToMonth").value;
+      if(!fm || !tm){ alert("Pick both months."); return; }
+      if(fm > tm){ var y = fm; fm = tm; tm = y; }
+      from = fm + "-01"; to = lastDayOfMonth(tm);
+      var mName = function(ym){ return new Date(ym + "-01T00:00:00").toLocaleDateString(undefined, {month:"long", year:"numeric"}); };
+      label = fm === tm ? mName(fm) : mName(fm) + " to " + mName(tm);
+    } else if(mode === "category"){
+      cat = document.getElementById("exportCategory").value;
+      if(!cat){ alert("Pick a category."); return; }
+      label = "Category: " + cat;
+    } else {
+      label = "All transactions";
+    }
+    var txns = (state.finance.transactions||[]).filter(function(t){
+      if(from && (t.date < from || t.date > to)) return false;
+      if(cat !== null && t.category !== cat) return false;
+      return true;
+    }).sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.recordedAt||0) - (b.recordedAt||0); });
+    if(txns.length === 0){ alert("No transactions match this choice."); return; }
+    document.getElementById("printReport").innerHTML = buildExportReport(txns, label, cat === null);
+    exportOverlay.classList.remove("show");
+    setTimeout(function(){ window.print(); }, 150);
+  };
+
+  function buildExportReport(txns, label, withCategorySummary){
+    var tIn = 0, tOut = 0, running = 0, byCat = {}, catOrder = [];
+    var rows = txns.map(function(t){
+      var isIn = t.direction === "in";
+      if(isIn) tIn += t.amount; else tOut += t.amount;
+      running += isIn ? t.amount : -t.amount;
+      var c = t.category || "Uncategorised";
+      if(!byCat[c]){ byCat[c] = { inAmt:0, outAmt:0, n:0 }; catOrder.push(c); }
+      byCat[c].n++; if(isIn) byCat[c].inAmt += t.amount; else byCat[c].outAmt += t.amount;
+      return '<tr><td style="white-space:nowrap;">' + escapeHtml(formatDateLong(t.date)) + '</td>' +
+        '<td>' + escapeHtml(t.description) + '</td>' +
+        '<td>' + escapeHtml(c) + '</td><td>' + escapeHtml(t.mode || "") + '</td>' +
+        '<td class="num in">' + (isIn ? formatMoney(t.amount) : '') + '</td>' +
+        '<td class="num out">' + (isIn ? '' : formatMoney(t.amount)) + '</td>' +
+        '<td class="num">' + formatMoney(running) + '</td></tr>';
+    }).join("");
+    var owner = (state.settings.userName || "").trim();
+    var html = '<h1>' + escapeHtml(label) + '</h1>' +
+      '<div class="pr-sub">' + (owner ? escapeHtml(owner) + ' · ' : '') + 'Personal Assistant · exported ' +
+        escapeHtml(new Date().toLocaleString(undefined, {day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit"})) + '</div>' +
+      '<div class="pr-sum">' +
+        '<div>Transactions<b>' + txns.length + '</b></div>' +
+        '<div>Period<b>' + escapeHtml(formatDateLong(txns[0].date) + ' – ' + formatDateLong(txns[txns.length-1].date)) + '</b></div>' +
+        '<div>Came in<b class="in">' + formatMoney(tIn) + '</b></div>' +
+        '<div>Went out<b class="out">' + formatMoney(tOut) + '</b></div>' +
+        '<div>Balance<b>' + formatMoney(tIn - tOut) + '</b></div>' +
+      '</div>';
+    if(withCategorySummary && catOrder.length > 1){
+      catOrder.sort(function(a,b){ return (byCat[a].inAmt - byCat[a].outAmt) - (byCat[b].inAmt - byCat[b].outAmt); });
+      html += '<h2>By category</h2><table><thead><tr><th>Category</th><th class="num">Count</th><th class="num">In</th><th class="num">Out</th><th class="num">Balance</th></tr></thead><tbody>' +
+        catOrder.map(function(c){
+          var v = byCat[c];
+          return '<tr><td>' + escapeHtml(c) + '</td><td class="num">' + v.n + '</td><td class="num in">' + formatMoney(v.inAmt) +
+            '</td><td class="num out">' + formatMoney(v.outAmt) + '</td><td class="num">' + formatMoney(v.inAmt - v.outAmt) + '</td></tr>';
+        }).join("") + '</tbody></table>';
+    }
+    html += '<h2>Transactions</h2><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Mode</th>' +
+      '<th class="num">In</th><th class="num">Out</th><th class="num">Running balance</th></tr></thead><tbody>' + rows +
+      '<tr><td colspan="4"><b>Total</b></td><td class="num in"><b>' + formatMoney(tIn) + '</b></td><td class="num out"><b>' + formatMoney(tOut) +
+      '</b></td><td class="num"><b>' + formatMoney(tIn - tOut) + '</b></td></tr></tbody></table>';
+    return html;
+  }
+
   // ---------- About ----------
   var aboutOverlay = document.getElementById("aboutOverlay");
   document.getElementById("aboutBtn").onclick = function(){ aboutOverlay.classList.add("show"); };
@@ -2964,5 +3128,6 @@
   }
 })();
 </script>
+<div id="printReport"></div>
 </body>
 </html>
