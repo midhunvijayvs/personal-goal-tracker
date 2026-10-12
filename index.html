@@ -926,6 +926,18 @@
   </div>
 </div>
 
+<!-- Import Transactions Modal -->
+<div class="overlay" id="importOverlay" style="z-index:60;">
+  <div class="modal">
+    <h2>Import transactions</h2>
+    <div id="importSummary" style="font-size:13.5px;line-height:1.6;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="importCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="importConfirmBtn">Import</button>
+    </div>
+  </div>
+</div>
+
 <!-- About Modal -->
 <div class="overlay" id="aboutOverlay">
   <div class="modal">
@@ -980,6 +992,11 @@
     <div class="settings-row" style="border-top:none;">
       <span>Transaction categories</span>
       <button class="btn btn-sm btn-ghost" id="editCategoriesBtn">Edit</button>
+    </div>
+    <div class="settings-row">
+      <span>Import transactions from a file</span>
+      <button class="btn btn-sm btn-ghost" id="importTxnBtn">Import</button>
+      <input type="file" id="importTxnFile" accept=".json,.csv,application/json,text/csv" style="display:none;">
     </div>
     <div class="settings-section"></div>
     <div class="settings-row" style="border-top:none;">
@@ -2580,6 +2597,167 @@
     input.value = "";
     saveState();
     renderCategoriesList();
+  };
+
+  // ---------- Bulk import of transactions (Settings > Finances) ----------
+  // Accepts a .json file ({ "transactions": [...] } or a bare array) or a .csv with a
+  // header row. Each row: date (YYYY-MM-DD), description, amount, direction (in/out),
+  // mode, category. Rows matching a transaction already in the app (same date, amount,
+  // direction and description) are skipped, so importing the same file twice is safe.
+  var importOverlay = document.getElementById("importOverlay");
+  var pendingImport = null;
+  document.getElementById("importTxnBtn").onclick = function(){
+    var f = document.getElementById("importTxnFile");
+    f.value = "";
+    f.click();
+  };
+  document.getElementById("importCancelBtn").onclick = function(){ pendingImport = null; importOverlay.classList.remove("show"); };
+  importOverlay.onclick = function(e){ if(e.target === importOverlay){ pendingImport = null; importOverlay.classList.remove("show"); } };
+
+  document.getElementById("importTxnFile").onchange = function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      var rows;
+      try{
+        rows = /\.csv$/i.test(file.name) ? parseCsvRows(String(reader.result)) : parseJsonRows(String(reader.result));
+      }catch(err){
+        alert("Couldn't read this file: " + err.message);
+        return;
+      }
+      showImportPreview(file.name, rows);
+    };
+    reader.readAsText(file);
+  };
+
+  function parseJsonRows(text){
+    var data = JSON.parse(text);
+    var list = Array.isArray(data) ? data : (data && data.transactions);
+    if(!Array.isArray(list)) throw new Error("no \"transactions\" list found.");
+    return list;
+  }
+
+  // Minimal CSV reader: commas, quoted fields with "" escapes, header row required.
+  function parseCsvRows(text){
+    var records = [], field = "", row = [], q = false;
+    text = text.replace(/^\uFEFF/, "");
+    for(var i=0;i<text.length;i++){
+      var ch = text[i];
+      if(q){
+        if(ch === '"'){ if(text[i+1] === '"'){ field += '"'; i++; } else q = false; }
+        else field += ch;
+      } else if(ch === '"') q = true;
+      else if(ch === ","){ row.push(field); field = ""; }
+      else if(ch === "\n" || ch === "\r"){
+        if(ch === "\r" && text[i+1] === "\n") i++;
+        row.push(field); field = "";
+        if(row.some(function(c){ return c.trim() !== ""; })) records.push(row);
+        row = [];
+      } else field += ch;
+    }
+    row.push(field);
+    if(row.some(function(c){ return c.trim() !== ""; })) records.push(row);
+    if(records.length < 2) throw new Error("the file needs a header row and at least one transaction.");
+    var head = records[0].map(function(h){ return h.trim().toLowerCase(); });
+    return records.slice(1).map(function(r){
+      var o = {};
+      head.forEach(function(h, i){ o[h] = (r[i] || "").trim(); });
+      return o;
+    });
+  }
+
+  function normalizeImportRow(raw){
+    if(!raw || typeof raw !== "object") return { error: "not a transaction" };
+    var date = String(raw.date || "").trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(new Date(date+"T00:00:00"))) return { error: "date must be YYYY-MM-DD" };
+    var amount = parseFloat(String(raw.amount).replace(/[,₹\s]/g, ""));
+    if(isNaN(amount)) return { error: "amount is not a number" };
+    var dir = String(raw.direction || "").trim().toLowerCase();
+    if(amount < 0 && !dir) dir = "out";
+    amount = Math.abs(amount);
+    if(dir === "came in" || dir === "credit" || dir === "income" || dir === "+") dir = "in";
+    if(dir === "went out" || dir === "debit" || dir === "expense" || dir === "-") dir = "out";
+    if(dir !== "in" && dir !== "out") return { error: "direction must be in or out" };
+    var description = String(raw.description || "").trim() || (raw.category ? String(raw.category).trim() : "Imported");
+    return { txn: {
+      description: description,
+      amount: Math.round(amount*100)/100,
+      direction: dir,
+      mode: String(raw.mode || "").trim() || "Cash",
+      category: String(raw.category || "").trim() || "Other",
+      date: date
+    }};
+  }
+
+  function txnKey(t){ return [t.date, t.direction, Number(t.amount).toFixed(2), String(t.description).trim().toLowerCase()].join("|"); }
+
+  function showImportPreview(fileName, rows){
+    var existing = {};
+    (state.finance.transactions||[]).forEach(function(t){ existing[txnKey(t)] = true; });
+    var good = [], dupes = 0, bad = [];
+    rows.forEach(function(raw, i){
+      var n = normalizeImportRow(raw);
+      if(n.error){ bad.push("Row " + (i+1) + ": " + n.error); return; }
+      if(existing[txnKey(n.txn)]){ dupes++; return; }
+      good.push(n.txn);
+    });
+    var known = txnCategories().map(function(c){ return c.toLowerCase(); });
+    var newCats = [];
+    good.forEach(function(t){
+      if(known.indexOf(t.category.toLowerCase()) === -1 && newCats.indexOf(t.category) === -1) newCats.push(t.category);
+    });
+    var tIn = 0, tOut = 0, minD = null, maxD = null;
+    good.forEach(function(t){
+      if(t.direction === "in") tIn += t.amount; else tOut += t.amount;
+      if(!minD || t.date < minD) minD = t.date;
+      if(!maxD || t.date > maxD) maxD = t.date;
+    });
+    pendingImport = { txns: good, newCats: newCats };
+
+    var html = '<div style="color:var(--text-dim);margin-bottom:8px;">' + escapeHtml(fileName) + '</div>';
+    if(good.length){
+      html += '<div><b>' + good.length + '</b> transaction' + (good.length === 1 ? '' : 's') + ' to add, ' +
+        escapeHtml(formatDateLong(minD)) + ' to ' + escapeHtml(formatDateLong(maxD)) + '.</div>' +
+        '<div>Money in <span style="color:var(--teal);">' + formatMoney(tIn) + '</span>, money out <span style="color:var(--red);">' + formatMoney(tOut) + '</span>.</div>';
+    } else {
+      html += '<div>Nothing new to add.</div>';
+    }
+    if(dupes) html += '<div style="color:var(--text-dim);">' + dupes + ' already in the app, skipped.</div>';
+    if(newCats.length) html += '<div style="margin-top:8px;">New categories that will be added: ' + newCats.map(escapeHtml).join(", ") + '.</div>';
+    if(bad.length){
+      html += '<div style="margin-top:8px;color:var(--red);">' + bad.length + ' row' + (bad.length === 1 ? '' : 's') + ' can\'t be read and will be skipped:</div>' +
+        '<div style="font-size:12px;color:var(--text-dim);max-height:120px;overflow-y:auto;">' + bad.slice(0, 50).map(escapeHtml).join("<br>") +
+        (bad.length > 50 ? '<br>…and ' + (bad.length - 50) + ' more' : '') + '</div>';
+    }
+    document.getElementById("importSummary").innerHTML = html;
+    var btn = document.getElementById("importConfirmBtn");
+    btn.style.display = good.length ? "" : "none";
+    btn.textContent = "Import " + good.length;
+    importOverlay.classList.add("show");
+  }
+
+  function formatDateLong(dateStr){
+    return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, {day:"numeric", month:"short", year:"numeric"});
+  }
+
+  document.getElementById("importConfirmBtn").onclick = function(){
+    if(!pendingImport) return;
+    var importId = uid(), now = Date.now();
+    pendingImport.txns.forEach(function(t, i){
+      t.id = uid() + i.toString(36);
+      t.recordedAt = now;
+      t.importId = importId; // marks the batch, in case it ever needs to be undone
+      state.finance.transactions.push(t);
+    });
+    if(pendingImport.newCats.length) state.finance.categories = txnCategories().concat(pendingImport.newCats);
+    var count = pendingImport.txns.length;
+    pendingImport = null;
+    importOverlay.classList.remove("show");
+    saveState();
+    if(currentPageId === "page-financials") renderFinancials();
+    if(currentPageId === "page-home") renderHome();
+    alert(count + " transaction" + (count === 1 ? "" : "s") + " imported.");
   };
 
   // ---------- About ----------
